@@ -42,4 +42,9 @@ TEST_F(BookmarkModelTest, BraveMigrateOtherNode) {
   EXPECT_EQ(new_other_node->children()[1]->GetTitle(), ASCIIToUTF16("C"));
 }
 
+TEST_F(BookmarkModelTest, BraveMigrateOtherNodeModelNull) {
+  BraveMigrateOtherNode(nullptr);
+  EXPECT_TRUE(true);  // Expecting we will not chrash above
+}
+
 }  // namespace bookmarks
