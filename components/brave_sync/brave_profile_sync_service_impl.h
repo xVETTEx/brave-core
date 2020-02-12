@@ -215,6 +215,16 @@ class BraveProfileSyncServiceImpl
 
   bool IsSQSReady() const;
 
+  // Methods to run specified actions right after bookmark model was loaded
+  void RunWhenModelIsLoaded(base::OnceCallback<void()> fn,
+                            const std::string& fn_name);
+  void CtorBkmLoaded(Profile* profile);
+  void OnSetupSyncNewToSyncBkmLoaded();
+  void OnSetupSyncHaveCodeBkmLoaded(const Uint8Array& seed);
+  void OnSyncReadyBkmLoaded();
+  void SendSyncRecordsBkmLoaded(const std::string& category_name,
+                                RecordsListPtr records);
+
   static base::TimeDelta GetRetryExponentialWaitAmount(int retry_number);
   static std::vector<unsigned> GetExponentialWaitsForTests();
   static const std::vector<unsigned> kExponentialWaits;
@@ -258,6 +268,8 @@ class BraveProfileSyncServiceImpl
   // Used to ensure that certain operations are performed on the sequence that
   // this object was created on.
   SEQUENCE_CHECKER(sequence_checker_);
+
+  base::WeakPtrFactory<BraveProfileSyncServiceImpl> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(BraveProfileSyncServiceImpl);
 };
