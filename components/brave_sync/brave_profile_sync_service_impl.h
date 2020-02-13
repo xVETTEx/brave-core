@@ -8,9 +8,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
-#include "base/one_shot_event.h"
 #include "brave/components/brave_sync/bookmark_model_loaded_only_observer.h"
 #include "brave/components/brave_sync/brave_sync_service.h"
 #include "brave/components/brave_sync/client/brave_sync_client.h"
@@ -272,8 +270,6 @@ class BraveProfileSyncServiceImpl
   // Used to ensure that certain operations are performed on the sequence that
   // this object was created on.
   SEQUENCE_CHECKER(sequence_checker_);
-
-  base::WeakPtrFactory<BraveProfileSyncServiceImpl> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(BraveProfileSyncServiceImpl);
 };
