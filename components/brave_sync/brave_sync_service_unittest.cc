@@ -826,6 +826,20 @@ TEST_F(BraveSyncServiceTest, OnSyncReadyNewToSync) {
   EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(syncer::prefs::kSyncBookmarks));
 }
 
+TEST_F(BraveSyncServiceTest, OnSyncReadyModelNotYetLoaded) {
+  EXPECT_NE(sync_service()->model_, nullptr);
+  // EXPECT_CALL(*sync_client(), SendGetBookmarksBaseOrder).Times(1);
+  profile()->GetPrefs()->SetString(brave_sync::prefs::kSyncBookmarksBaseOrder,
+                                   "1.1.");
+  sync_service()->model_ = nullptr;
+  sync_service()->OnSyncReady();
+  EXPECT_TRUE(sync_service()->is_model_loaded_observer_set_);
+  // Actualy observer wasn't set, we just checked the intention to have the
+  // observer set up. But now we have to revert the flag to avoid crash on
+  // destuctor at BookmarkModel::RemoveObserver
+  sync_service()->is_model_loaded_observer_set_ = false;
+}
+
 TEST_F(BraveSyncServiceTest, OnGetExistingObjects) {
   EXPECT_CALL(*sync_client(), SendResolveSyncRecords).Times(1);
 

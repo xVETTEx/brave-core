@@ -51,6 +51,7 @@ FORWARD_DECLARE_TEST(BraveSyncServiceTest, SetThisDeviceCreatedTime);
 FORWARD_DECLARE_TEST(BraveSyncServiceTest, InitialFetchesStartWithZero);
 FORWARD_DECLARE_TEST(BraveSyncServiceTest, DeviceIdV2Migration);
 FORWARD_DECLARE_TEST(BraveSyncServiceTest, DeviceIdV2MigrationDupDeviceId);
+FORWARD_DECLARE_TEST(BraveSyncServiceTest, OnSyncReadyModelNotYetLoaded);
 
 class BraveSyncServiceTest;
 
@@ -174,6 +175,8 @@ class BraveProfileSyncServiceImpl
   FRIEND_TEST_ALL_PREFIXES(::BraveSyncServiceTest, DeviceIdV2Migration);
   FRIEND_TEST_ALL_PREFIXES(::BraveSyncServiceTest,
                            DeviceIdV2MigrationDupDeviceId);
+  FRIEND_TEST_ALL_PREFIXES(::BraveSyncServiceTest,
+                           OnSyncReadyModelNotYetLoaded);
 
   friend class ::BraveSyncServiceTest;
 
@@ -264,7 +267,7 @@ class BraveProfileSyncServiceImpl
 
   bool pending_self_reset_ = false;
 
-  bool is_model_loaded_observer_set = false;
+  bool is_model_loaded_observer_set_ = false;
 
   // Used to ensure that certain operations are performed on the sequence that
   // this object was created on.

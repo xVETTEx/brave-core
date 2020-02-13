@@ -232,7 +232,7 @@ void BraveProfileSyncServiceImpl::OnNudgeSyncCycle(RecordsListPtr records) {
 
 BraveProfileSyncServiceImpl::~BraveProfileSyncServiceImpl() {
   network_connection_tracker_->RemoveNetworkConnectionObserver(this);
-  if (is_model_loaded_observer_set) {
+  if (is_model_loaded_observer_set_) {
     model_->RemoveObserver(this);
   }
 }
@@ -487,14 +487,17 @@ void BraveProfileSyncServiceImpl::OnSyncReady() {
   DCHECK(false == brave_sync_ready_);
   brave_sync_ready_ = true;
 
-  if (model_->loaded()) {
+  if (model_ &&  // model_ can be nullptr only in tests
+      model_->loaded()) {
     OnSyncReadyBookmarksModelLoaded();
   } else {
     // Will call OnSyncReadyBookmarksModelLoaded once model is loaded
     LOG(WARNING) << "[BraveSync] bookmarks model is not yet loaded, "
                  << "OnSyncReady will be delayed";
-    model_->AddObserver(this);
-    is_model_loaded_observer_set = true;
+    if (model_) {  // This condition is only for test
+      model_->AddObserver(this);
+    }
+    is_model_loaded_observer_set_ = true;
   }
 }
 
