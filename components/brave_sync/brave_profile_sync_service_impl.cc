@@ -29,7 +29,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/chrome_sync_client.h"
 #include "components/bookmarks/browser/bookmark_model.h"
-#include "components/bookmarks/browser/bookmark_model_observer.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/sync/engine_impl/syncer.h"
 #include "content/public/browser/browser_thread.h"
@@ -166,66 +165,12 @@ SyncRecordPtr PrepareResolvedDevice(SyncDevice* device,
   return record;
 }
 
-using bookmarks::BookmarkModel;
-using bookmarks::BookmarkNode;
-
-class ActionWhenBookmarksLoaded : public bookmarks::BookmarkModelObserver {
- public:
-  ActionWhenBookmarksLoaded(base::OnceCallback<void()> fn,
-                            const std::string& fn_name)
-      : fn_(std::move(fn)), fn_name_(fn_name) {}
-  ~ActionWhenBookmarksLoaded() override = default;
-
- private:
-  base::OnceCallback<void()> fn_;
-  std::string fn_name_;
-
-  // bookmarks::BookmarkModelObserver implementation
-  void BookmarkModelLoaded(BookmarkModel* model, bool ids_reassigned) override {
-    DCHECK(model);
-    DCHECK(model->loaded());
-
-    LOG(WARNING) << "[BraveSync] bookmarks model just loaded, now resuming "
-                 << fn_name_;
-    std::move(fn_).Run();
-  }
-
-  void BookmarkNodeMoved(BookmarkModel* model,
-                         const BookmarkNode* old_parent,
-                         size_t old_index,
-                         const BookmarkNode* new_parent,
-                         size_t new_index) override {}
-
-  void BookmarkNodeAdded(BookmarkModel* model,
-                         const BookmarkNode* parent,
-                         size_t index) override {}
-
-  void BookmarkNodeRemoved(
-      BookmarkModel* model,
-      const BookmarkNode* parent,
-      size_t old_index,
-      const BookmarkNode* node,
-      const std::set<GURL>& no_longer_bookmarked) override {}
-
-  void BookmarkNodeChanged(BookmarkModel* model,
-                           const BookmarkNode* node) override {}
-
-  void BookmarkNodeFaviconChanged(BookmarkModel* model,
-                                  const BookmarkNode* node) override {}
-
-  void BookmarkNodeChildrenReordered(BookmarkModel* model,
-                                     const BookmarkNode* node) override {}
-
-  void BookmarkAllUserNodesRemoved(
-      BookmarkModel* model,
-      const std::set<GURL>& removed_urls) override {}
-};
-
 }  // namespace
 
 BraveProfileSyncServiceImpl::BraveProfileSyncServiceImpl(Profile* profile,
                                                          InitParams init_params)
-    : BraveProfileSyncService(std::move(init_params)) {
+    : BraveProfileSyncService(std::move(init_params)),
+      brave_sync_client_(BraveSyncClient::Create(this, profile)) {
   brave_sync_prefs_ =
       std::make_unique<prefs::Prefs>(sync_client_->GetPrefService());
 
@@ -259,18 +204,27 @@ BraveProfileSyncServiceImpl::BraveProfileSyncServiceImpl(Profile* profile,
   model_ = BookmarkModelFactory::GetForBrowserContext(profile);
   DCHECK(model_);
 
+  if (model_->loaded()) {
+    bookmark_model_loaded_.Signal();
+  } else {
+    LOG(WARNING) << "[BraveSync] bookmarks model is not yet loaded, "
+                 << "some calls will be delayed";
+    model_->AddObserver(this);
+    is_model_loaded_observer_set = true;
+  }
+
   network_connection_tracker_->AddNetworkConnectionObserver(this);
   RecordSyncStateP3A();
-
-  // Ensure we load extension when bookmarks model is loaded
-  RunWhenModelIsLoaded(
-      base::BindOnce(&BraveProfileSyncServiceImpl::CtorBkmLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), base::Unretained(profile)),
-      "Ctor");
 }
 
-void BraveProfileSyncServiceImpl::CtorBkmLoaded(Profile* profile) {
-  brave_sync_client_.reset(BraveSyncClient::Create(this, profile));
+void BraveProfileSyncServiceImpl::BookmarkModelLoaded(BookmarkModel* model,
+                                                      bool ids_reassigned) {
+  DCHECK(model);
+  DCHECK(model->loaded());
+
+  LOG(WARNING) << "[BraveSync] bookmarks model just loaded, "
+               << "resuming pending calls, if any";
+  bookmark_model_loaded_.Signal();
 }
 
 void BraveProfileSyncServiceImpl::OnNudgeSyncCycle(RecordsListPtr records) {
@@ -287,6 +241,9 @@ void BraveProfileSyncServiceImpl::OnNudgeSyncCycle(RecordsListPtr records) {
 
 BraveProfileSyncServiceImpl::~BraveProfileSyncServiceImpl() {
   network_connection_tracker_->RemoveNetworkConnectionObserver(this);
+  if (is_model_loaded_observer_set) {
+    model_->RemoveObserver(this);
+  }
 }
 
 void BraveProfileSyncServiceImpl::OnSetupSyncHaveCode(
@@ -322,10 +279,10 @@ void BraveProfileSyncServiceImpl::OnSetupSyncHaveCode(
     brave_sync_prefs_->SetThisDeviceName(device_name);
   brave_sync_initializing_ = true;
 
-  RunWhenModelIsLoaded(
+  bookmark_model_loaded_.Post(
+      FROM_HERE,
       base::BindOnce(&BraveProfileSyncServiceImpl::OnSetupSyncHaveCodeBkmLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), seed),
-      "OnSetupSyncHaveCode");
+                     weak_ptr_factory_.GetWeakPtr(), seed));
 }
 
 void BraveProfileSyncServiceImpl::OnSetupSyncHaveCodeBkmLoaded(
@@ -357,11 +314,11 @@ void BraveProfileSyncServiceImpl::OnSetupSyncNewToSync(
 
   brave_sync_initializing_ = true;
 
-  RunWhenModelIsLoaded(
+  bookmark_model_loaded_.Post(
+      FROM_HERE,
       base::BindOnce(
           &BraveProfileSyncServiceImpl::OnSetupSyncNewToSyncBkmLoaded,
-          weak_ptr_factory_.GetWeakPtr()),
-      "OnSetupSyncNewToSync");
+          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void BraveProfileSyncServiceImpl::OnSetupSyncNewToSyncBkmLoaded() {
@@ -555,10 +512,10 @@ void BraveProfileSyncServiceImpl::OnSyncReady() {
   DCHECK(false == brave_sync_ready_);
   brave_sync_ready_ = true;
 
-  RunWhenModelIsLoaded(
+  bookmark_model_loaded_.Post(
+      FROM_HERE,
       base::BindOnce(&BraveProfileSyncServiceImpl::OnSyncReadyBkmLoaded,
-                     weak_ptr_factory_.GetWeakPtr()),
-      "OnSyncReady");
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void BraveProfileSyncServiceImpl::OnSyncReadyBkmLoaded() {
@@ -1145,11 +1102,11 @@ BraveSyncService* BraveProfileSyncServiceImpl::GetSyncService() const {
 void BraveProfileSyncServiceImpl::SendSyncRecords(
     const std::string& category_name,
     RecordsListPtr records) {
-  RunWhenModelIsLoaded(
+  bookmark_model_loaded_.Post(
+      FROM_HERE,
       base::BindOnce(&BraveProfileSyncServiceImpl::SendSyncRecordsBkmLoaded,
                      weak_ptr_factory_.GetWeakPtr(), category_name,
-                     std::move(records)),
-      "SendSyncRecords");
+                     std::move(records)));
 }
 
 void BraveProfileSyncServiceImpl::SendSyncRecordsBkmLoaded(
@@ -1216,20 +1173,6 @@ void BraveProfileSyncServiceImpl::ResendSyncRecords(
     }
     if (!records->empty())
       brave_sync_client_->SendSyncRecords(category_name, *records);
-  }
-}
-
-void BraveProfileSyncServiceImpl::RunWhenModelIsLoaded(
-    base::OnceCallback<void()> fn,
-    const std::string& fn_name) {
-  DCHECK(model_);
-  if (model_->loaded()) {
-    std::move(fn).Run();
-  } else {
-    LOG(WARNING)
-        << "[BraveSync] bookmarks model is not yet loaded, will resume "
-        << fn_name << " when model will be loaded";
-    model_->AddObserver(new ActionWhenBookmarksLoaded(std::move(fn), fn_name));
   }
 }
 

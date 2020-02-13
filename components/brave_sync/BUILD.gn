@@ -17,6 +17,7 @@ config("brave_sync_config") {
 if (enable_brave_sync) {
   source_set("js_sync_lib_impl") {
     sources = [
+      "bookmark_model_loaded_only_observer.h",
       "brave_profile_sync_service_impl.cc",
       "brave_profile_sync_service_impl.h",
       "client/brave_sync_client.h",

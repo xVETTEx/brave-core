@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "base/one_shot_event.h"
+#include "brave/components/brave_sync/bookmark_model_loaded_only_observer.h"
 #include "brave/components/brave_sync/brave_sync_service.h"
 #include "brave/components/brave_sync/client/brave_sync_client.h"
 #include "brave/components/brave_sync/jslib_messages_fwd.h"
@@ -61,7 +63,8 @@ class BraveProfileSyncServiceImpl
     : public BraveProfileSyncService,
       public BraveSyncService,
       public network::NetworkConnectionTracker::NetworkConnectionObserver,
-      public SyncMessageHandler {
+      public SyncMessageHandler,
+      public BookmarkModelLoadedOnlyObserver {
  public:
   explicit BraveProfileSyncServiceImpl(Profile* profile,
                                        InitParams init_params);
@@ -116,9 +119,12 @@ class BraveProfileSyncServiceImpl
   // NetworkConnectionTracker::NetworkConnectionObserver implementation.
   void OnConnectionChanged(network::mojom::ConnectionType type) override;
 
-  // KeyedService implementation.  This must be called exactly
+  // KeyedService implementation. This must be called exactly
   // once (before this object is destroyed).
   void Shutdown() override;
+
+  // BookmarkModelLoadedOnlyObserver implementation
+  void BookmarkModelLoaded(BookmarkModel* model, bool ids_reassigned) override;
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   BraveSyncClient* GetBraveSyncClient() override;
@@ -216,9 +222,6 @@ class BraveProfileSyncServiceImpl
   bool IsSQSReady() const;
 
   // Methods to run specified actions right after bookmark model was loaded
-  void RunWhenModelIsLoaded(base::OnceCallback<void()> fn,
-                            const std::string& fn_name);
-  void CtorBkmLoaded(Profile* profile);
   void OnSetupSyncNewToSyncBkmLoaded();
   void OnSetupSyncHaveCodeBkmLoaded(const Uint8Array& seed);
   void OnSyncReadyBkmLoaded();
@@ -264,6 +267,9 @@ class BraveProfileSyncServiceImpl
   base::Time this_device_created_time_;
 
   bool pending_self_reset_ = false;
+
+  base::OneShotEvent bookmark_model_loaded_;
+  bool is_model_loaded_observer_set = false;
 
   // Used to ensure that certain operations are performed on the sequence that
   // this object was created on.
