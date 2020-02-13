@@ -221,12 +221,8 @@ class BraveProfileSyncServiceImpl
 
   bool IsSQSReady() const;
 
-  // Methods to run specified actions right after bookmark model was loaded
-  void OnSetupSyncNewToSyncBkmLoaded();
-  void OnSetupSyncHaveCodeBkmLoaded(const Uint8Array& seed);
-  void OnSyncReadyBkmLoaded();
-  void SendSyncRecordsBkmLoaded(const std::string& category_name,
-                                RecordsListPtr records);
+  // Method to be run right after bookmark model will be loaded
+  void OnSyncReadyBookmarksModelLoaded();
 
   static base::TimeDelta GetRetryExponentialWaitAmount(int retry_number);
   static std::vector<unsigned> GetExponentialWaitsForTests();
@@ -268,7 +264,6 @@ class BraveProfileSyncServiceImpl
 
   bool pending_self_reset_ = false;
 
-  base::OneShotEvent bookmark_model_loaded_;
   bool is_model_loaded_observer_set = false;
 
   // Used to ensure that certain operations are performed on the sequence that

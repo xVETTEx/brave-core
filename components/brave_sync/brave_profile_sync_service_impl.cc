@@ -202,16 +202,7 @@ BraveProfileSyncServiceImpl::BraveProfileSyncServiceImpl(Profile* profile,
                  base::Unretained(this)));
 
   model_ = BookmarkModelFactory::GetForBrowserContext(profile);
-  DCHECK(model_);
-
-  if (model_->loaded()) {
-    bookmark_model_loaded_.Signal();
-  } else {
-    LOG(WARNING) << "[BraveSync] bookmarks model is not yet loaded, "
-                 << "some calls will be delayed";
-    model_->AddObserver(this);
-    is_model_loaded_observer_set = true;
-  }
+  // model_ can be null in some tests
 
   network_connection_tracker_->AddNetworkConnectionObserver(this);
   RecordSyncStateP3A();
@@ -223,8 +214,8 @@ void BraveProfileSyncServiceImpl::BookmarkModelLoaded(BookmarkModel* model,
   DCHECK(model->loaded());
 
   LOG(WARNING) << "[BraveSync] bookmarks model just loaded, "
-               << "resuming pending calls, if any";
-  bookmark_model_loaded_.Signal();
+               << "resuming pending sync ready callback";
+  OnSyncReadyBookmarksModelLoaded();
 }
 
 void BraveProfileSyncServiceImpl::OnNudgeSyncCycle(RecordsListPtr records) {
@@ -279,14 +270,6 @@ void BraveProfileSyncServiceImpl::OnSetupSyncHaveCode(
     brave_sync_prefs_->SetThisDeviceName(device_name);
   brave_sync_initializing_ = true;
 
-  bookmark_model_loaded_.Post(
-      FROM_HERE,
-      base::BindOnce(&BraveProfileSyncServiceImpl::OnSetupSyncHaveCodeBkmLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), seed));
-}
-
-void BraveProfileSyncServiceImpl::OnSetupSyncHaveCodeBkmLoaded(
-    const Uint8Array& seed) {
   brave_sync_prefs_->SetSyncEnabled(true);
   seed_ = seed;
 }
@@ -314,14 +297,6 @@ void BraveProfileSyncServiceImpl::OnSetupSyncNewToSync(
 
   brave_sync_initializing_ = true;
 
-  bookmark_model_loaded_.Post(
-      FROM_HERE,
-      base::BindOnce(
-          &BraveProfileSyncServiceImpl::OnSetupSyncNewToSyncBkmLoaded,
-          weak_ptr_factory_.GetWeakPtr()));
-}
-
-void BraveProfileSyncServiceImpl::OnSetupSyncNewToSyncBkmLoaded() {
   brave_sync_prefs_->SetSyncEnabled(true);
 }
 
@@ -512,13 +487,18 @@ void BraveProfileSyncServiceImpl::OnSyncReady() {
   DCHECK(false == brave_sync_ready_);
   brave_sync_ready_ = true;
 
-  bookmark_model_loaded_.Post(
-      FROM_HERE,
-      base::BindOnce(&BraveProfileSyncServiceImpl::OnSyncReadyBkmLoaded,
-                     weak_ptr_factory_.GetWeakPtr()));
+  if (model_->loaded()) {
+    OnSyncReadyBookmarksModelLoaded();
+  } else {
+    // Will call OnSyncReadyBookmarksModelLoaded once model is loaded
+    LOG(WARNING) << "[BraveSync] bookmarks model is not yet loaded, "
+                 << "OnSyncReady will be delayed";
+    model_->AddObserver(this);
+    is_model_loaded_observer_set = true;
+  }
 }
 
-void BraveProfileSyncServiceImpl::OnSyncReadyBkmLoaded() {
+void BraveProfileSyncServiceImpl::OnSyncReadyBookmarksModelLoaded() {
   // For launching from legacy sync profile and also brand new profile
   if (brave_sync_prefs_->GetMigratedBookmarksVersion() < 2)
     SetPermanentNodesOrder(brave_sync_prefs_->GetBookmarksBaseOrder());
@@ -574,6 +554,7 @@ void BraveProfileSyncServiceImpl::OnGetExistingObjects(
   // TODO(bridiver) - what do we do with is_truncated ?
   // It appears to be ignored in b-l
   if (category_name == kBookmarks) {
+    DCHECK(model_->loaded());
     if (!IsTimeEmpty(last_record_time_stamp)) {
       brave_sync_prefs_->SetLatestRecordTime(last_record_time_stamp);
     }
@@ -748,16 +729,6 @@ void BraveProfileSyncServiceImpl::SetPermanentNodesOrder(
 std::unique_ptr<SyncRecord>
 BraveProfileSyncServiceImpl::BookmarkNodeToSyncBookmark(
     const bookmarks::BookmarkNode* node) {
-  // We don't need RunWhenModelIsLoaded here, because this is resolve opertion,
-  // which can happened only if sync extension is running, but we load extension
-  // only when the bookmark model is loaded, see:
-  // CtorBkmLoaded,
-  // OnSetupSyncNewToSyncBkmLoaded,
-  // OnSetupSyncHaveCodeBkmLoaded.
-
-  DCHECK(model_);
-  DCHECK(model_->loaded());
-
   if (node->is_permanent_node() || !node->parent())
     return std::unique_ptr<SyncRecord>();
 
@@ -850,6 +821,8 @@ void BraveProfileSyncServiceImpl::LoadSyncEntityInfo(
 void BraveProfileSyncServiceImpl::CreateResolveList(
     const std::vector<std::unique_ptr<SyncRecord>>& records,
     SyncRecordAndExistingList* records_and_existing_objects) {
+  DCHECK(model_);
+  DCHECK(model_->loaded());
   const auto& this_device_id = brave_sync_prefs_->GetThisDeviceId();
   for (const auto& record : records) {
     // Ignore records from ourselves to avoid mess on merge
@@ -1102,20 +1075,11 @@ BraveSyncService* BraveProfileSyncServiceImpl::GetSyncService() const {
 void BraveProfileSyncServiceImpl::SendSyncRecords(
     const std::string& category_name,
     RecordsListPtr records) {
-  bookmark_model_loaded_.Post(
-      FROM_HERE,
-      base::BindOnce(&BraveProfileSyncServiceImpl::SendSyncRecordsBkmLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), category_name,
-                     std::move(records)));
-}
-
-void BraveProfileSyncServiceImpl::SendSyncRecordsBkmLoaded(
-    const std::string& category_name,
-    RecordsListPtr records) {
   DCHECK(brave_sync_client_);
   DCHECK(model_->loaded());
   brave_sync_client_->SendSyncRecords(category_name, *records);
   if (category_name == kBookmarks) {
+    DCHECK(model_->loaded());
     for (auto& record : *records) {
       SaveSyncEntityInfo(record.get());
       std::unique_ptr<base::DictionaryValue> meta =
@@ -1136,6 +1100,10 @@ void BraveProfileSyncServiceImpl::ResendSyncRecords(
         brave_sync_prefs_->GetRecordsToResend();
     if (records_to_resend.empty())
       return;
+
+    DCHECK(model_);
+    DCHECK(model_->loaded());
+
     for (auto& object_id : records_to_resend) {
       auto* node = FindByObjectId(model_, object_id);
 
