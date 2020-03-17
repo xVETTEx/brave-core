@@ -4,6 +4,8 @@
 
 import * as React from 'react'
 
+import { LocaleContext } from '../localeContext'
+
 import {
   Container,
   Description,
@@ -18,13 +20,14 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary (props: OrderSummaryProps) {
+  const locale = React.useContext(LocaleContext)
   return (
     <Container>
       <table>
         <thead>
           <tr>
-            <th>Item Selected</th>
-            <th>Order Total</th>
+            <th>{locale.get('itemSelected')}</th>
+            <th>{locale.get('orderTotal')}</th>
           </tr>
         </thead>
         <tbody>
@@ -33,7 +36,7 @@ export function OrderSummary (props: OrderSummaryProps) {
               <Description>{props.description}</Description>
             </td>
             <td>
-              <BatAmount>{props.orderTotal}</BatAmount>
+              <BatAmount locale={locale}>{props.orderTotal}</BatAmount>
               <ExchangeAmount>{props.orderTotalConverted}</ExchangeAmount>
             </td>
           </tr>

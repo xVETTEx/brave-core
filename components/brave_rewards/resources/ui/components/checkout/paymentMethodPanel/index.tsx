@@ -4,6 +4,7 @@
 
 import * as React from 'react'
 
+import { LocaleContext } from '../localeContext'
 import { OrderSummary } from '../orderSummary'
 import { UseWalletPanel } from '../useWalletPanel'
 import { UseCreditCardPanel } from '../useCreditCardPanel'
@@ -24,12 +25,13 @@ interface PaymentMethodPanelProps {
 }
 
 export function PaymentMethodPanel (props: PaymentMethodPanelProps) {
+  const locale = React.useContext(LocaleContext)
   const [continueWithCard, setContinueWithCard] = React.useState<boolean>(false)
   const hasSufficientFunds = props.walletBalance >= props.orderTotal
 
   return (
     <>
-      <h1>Payment Method</h1>
+      <h1>{locale.get('paymentMethodTitle')}</h1>
       <OrderSummary
         description={props.orderDescription}
         orderTotal={props.orderTotal.toFixed(1)}

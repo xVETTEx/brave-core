@@ -6,6 +6,7 @@ import * as React from 'react'
 import { Button } from 'brave-ui/components'
 import { BatColorIcon } from 'brave-ui/components/icons'
 
+import { LocaleContext } from '../localeContext'
 import { FormSection } from '../formSection'
 import { CreditCardForm, CreditCardFormHandle, CreditCardDetails } from '../creditCardForm'
 import { GoBackLink } from '../goBackLink'
@@ -45,6 +46,9 @@ function AmountOptionPanel (props: AmountOpionPanelProps) {
   if (props.amountOptions.length === 0) {
     return null
   }
+
+  const locale = React.useContext(LocaleContext)
+
   let selectedOption = props.amountOptions[0]
   for (const option of props.amountOptions) {
     if (option.amount === props.selectedAmount) {
@@ -52,6 +56,7 @@ function AmountOptionPanel (props: AmountOpionPanelProps) {
       break
     }
   }
+
   return (
     <>
         <AmountOptionList>
@@ -61,7 +66,7 @@ function AmountOptionPanel (props: AmountOpionPanelProps) {
             return (
               <AmountOptionContainer key={option.amount} selected={option === selectedOption}>
                 <Button
-                  text={`${option.amount} BAT`}
+                  text={`${option.amount} ${locale.get('bat')}`}
                   size={'medium'}
                   onClick={selectAmount}
                 />
@@ -74,9 +79,9 @@ function AmountOptionPanel (props: AmountOpionPanelProps) {
         }
       </AmountOptionList>
       <ChargeSummary>
-        <div>Transaction Fee ({selectedOption.transactionFeeRate})</div>
+        <div>{locale.get('transactionFee')} ({selectedOption.transactionFeeRate})</div>
         <div>{selectedOption.transactionFee}</div>
-        <ChargeSummaryTotal>Order Total</ChargeSummaryTotal>
+        <ChargeSummaryTotal>{locale.get('orderTotal')}</ChargeSummaryTotal>
         <ChargeSummaryTotalAmount>{selectedOption.totalCharge}</ChargeSummaryTotalAmount>
       </ChargeSummary>
     </>
@@ -94,6 +99,8 @@ interface AddFundsPanelProps {
 }
 
 export function AddFundsPanel (props: AddFundsPanelProps) {
+  const locale = React.useContext(LocaleContext)
+
   const [selectedAmount, setSelectedAmount] = React.useState<number>(0)
   const creditCardFormRef = React.useRef<CreditCardFormHandle>(null)
 
@@ -111,27 +118,27 @@ export function AddFundsPanel (props: AddFundsPanelProps) {
 
   return (
     <>
-      <h1>Add Funds</h1>
+      <h1>{locale.get('addFundsTitle')}</h1>
       <Subtitle>
-        Add BAT to your wallet using your credit card
+        {locale.get('addFundsSubtitle')}
       </Subtitle>
       <CurrentBalance>
         <div>
-          Current balance
-          <CurrentBalanceBat>{props.walletBalance} BAT</CurrentBalanceBat>
+          {locale.get('currentBalance')}
+          <CurrentBalanceBat>{props.walletBalance} {locale.get('bat')}</CurrentBalanceBat>
           <CurrentBalanceConverted>{props.walletBalanceConverted}</CurrentBalanceConverted>
         </div>
         <CurrentBalanceNeeded>
-          {props.amountNeeded} BAT needed
+          {props.amountNeeded} {locale.get('batNeeded')}
         </CurrentBalanceNeeded>
       </CurrentBalance>
       <FormSection
         title={
           <>
-            <div>1. Select amount to add</div>
+            <div>1. ${locale.get('selectAmountToAdd')}</div>
             <div>
               <ExchangeRateDisplay>
-                <BatColorIcon /> 1 BAT = {props.unitValueConverted}
+                <BatColorIcon /> 1 {locale.get('bat')} = {props.unitValueConverted}
               </ExchangeRateDisplay>
             </div>
           </>
@@ -143,7 +150,7 @@ export function AddFundsPanel (props: AddFundsPanelProps) {
           setSelectedAmount={setSelectedAmount}
         />
       </FormSection>
-      <FormSection title={'2. Enter credit card info'}>
+      <FormSection title={`2. ${locale.get('enterCreditCardInfo')}`}>
         <CreditCardForm handleRef={creditCardFormRef} />
       </FormSection>
       <PurchaseButtonRow>
@@ -152,7 +159,7 @@ export function AddFundsPanel (props: AddFundsPanelProps) {
         </div>
         <div>
           <Button
-            text={'Add Funds & Purchase'}
+            text={locale.get('addFundsButtonText')}
             size='medium'
             onClick={onPurchaseClick}
             type='accent'
@@ -161,7 +168,7 @@ export function AddFundsPanel (props: AddFundsPanelProps) {
         </div>
       </PurchaseButtonRow>
       <TermsOfSale>
-        By clicking Add Funds &amp; Purchase, you agree to <a href='javascript:void 0'>Brave’s Terms of Sale</a>.
+        <span dangerouslySetInnerHTML={{ __html: locale.get('addFundsTermsOfSale') }} />
       </TermsOfSale>
     </>
   )

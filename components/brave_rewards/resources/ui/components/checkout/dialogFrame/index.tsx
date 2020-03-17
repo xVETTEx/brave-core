@@ -5,6 +5,8 @@
 import * as React from 'react'
 import { CloseStrokeIcon, BatColorIcon } from 'brave-ui/components/icons'
 
+import { LocaleContext } from '../localeContext'
+
 import {
   MainPanel,
   Content,
@@ -22,13 +24,15 @@ export interface DialogFrameProps {
 }
 
 export function DialogFrame (props: DialogFrameProps) {
+  const locale = React.useContext(LocaleContext)
   return (
     <MainPanel showBackground={props.showBackground}>
       <TopBar>
         {
           !props.showTitle ? null : <>
             <DialogTitle>
-              <BatColorIcon /> <BatText>BAT</BatText> Checkout
+              <BatColorIcon />
+              <BatText>{locale.get('bat')}</BatText> {locale.get('checkout')}
             </DialogTitle>
           </>
         }

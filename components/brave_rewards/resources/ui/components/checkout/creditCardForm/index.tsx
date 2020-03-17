@@ -5,6 +5,7 @@
 import * as React from 'react'
 import { Toggle } from 'brave-ui/components'
 
+import { LocaleContext } from '../localeContext'
 import { Behaviors } from './behaviors'
 import { getCreditCardIcon } from './icons'
 import { CreditCardDetails, CreditCardError } from './types'
@@ -31,6 +32,8 @@ interface CreditCardFormProps {
 }
 
 export function CreditCardForm (props: CreditCardFormProps) {
+  const locale = React.useContext(LocaleContext)
+
   const [cardTypeId, setCardTypeId] = React.useState('')
 
   const [saveCardChecked, setSaveCardChecked] = React.useState(true)
@@ -64,27 +67,27 @@ export function CreditCardForm (props: CreditCardFormProps) {
     <Container>
       <CardNumber>
         <label>
-          Card number
+          {locale.get('cardNumber')}
           <input ref={cardNumberRef} autoComplete='cc-number' />
           <InputIconContainer><CardIcon /></InputIconContainer>
         </label>
       </CardNumber>
       <Expiration>
         <label>
-          Expiration
+          {locale.get('expiration')}
           <input ref={expiryRef} placeholder={'MM/YY'} autoComplete='cc-exp' />
         </label>
       </Expiration>
       <SecurityCode>
         <label>
-          Security code
+          {locale.get('securityCode')}
           <input ref={securityCodeRef} autoComplete='cc-cvc' />
         </label>
       </SecurityCode>
       <SaveThisCard>
         <label>
           <div>
-            Save this card
+            {locale.get('saveThisCard')}
           </div>
           <div>
             <Toggle checked={saveCardChecked} onToggle={toggleSaveCard} />

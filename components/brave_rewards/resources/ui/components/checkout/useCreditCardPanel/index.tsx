@@ -6,6 +6,7 @@ import * as React from 'react'
 import { Button } from 'brave-ui/components'
 import { CaratStrongRightIcon } from 'brave-ui/components/icons'
 
+import { LocaleContext } from '../localeContext'
 import { FormSection } from '../formSection'
 import { CreditCardForm, CreditCardDetails, CreditCardFormHandle } from '../creditCardForm'
 import { GoBackLink } from '../goBackLink'
@@ -28,6 +29,7 @@ interface UseCreditCardPanelProps {
 }
 
 export function UseCreditCardPanel (props: UseCreditCardPanelProps) {
+  const locale = React.useContext(LocaleContext)
   const onBack = () => { props.setContinueWithCard(false) }
   const onContinue = () => { props.setContinueWithCard(true) }
 
@@ -46,8 +48,8 @@ export function UseCreditCardPanel (props: UseCreditCardPanelProps) {
   }
 
   const title = props.rewardsEnabled && !props.continueWithCard
-    ? 'Use credit card'
-    : 'Enter credit card info'
+    ? locale.get('useCreditCard')
+    : locale.get('enterCreditCardInfo')
 
   const showForm =
     props.continueWithCard ||
@@ -70,7 +72,7 @@ export function UseCreditCardPanel (props: UseCreditCardPanelProps) {
           {props.continueWithCard && <div><GoBackLink onClick={onBack} /></div>}
           <div>
             <Button
-              text={'Confirm'}
+              text={locale.get('confirmButtonText')}
               size='medium'
               onClick={onConfirmClick}
               type='accent'
@@ -79,7 +81,7 @@ export function UseCreditCardPanel (props: UseCreditCardPanelProps) {
           </div>
         </ConfirmButtonRow>
         <TermsOfSale>
-          By clicking Confirm, you agree to <a href='javascript:void 0'>Brave’s Terms of Sale</a>.
+          <span dangerouslySetInnerHTML={{ __html: locale.get('confirmTermsOfSale') }} />
         </TermsOfSale>
       </div>
     )
@@ -89,11 +91,11 @@ export function UseCreditCardPanel (props: UseCreditCardPanelProps) {
     <FormSection title={title}>
       <ContinueBox>
         <ContinueBoxText>
-          Make a one-time purchase using a credit card instead.
+          {locale.get('continueWithCreditCardMessage')}
         </ContinueBoxText>
         <ContinueBoxLink>
           <a href='javascript:void 0' onClick={onContinue}>
-            Continue with credit card
+            {locale.get('continueWithCreditCard')}
             <CaratStrongRightIcon />
           </a>
         </ContinueBoxLink>

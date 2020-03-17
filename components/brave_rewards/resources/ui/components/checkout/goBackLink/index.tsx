@@ -5,6 +5,7 @@
 import * as React from 'react'
 import { CaratStrongLeftIcon } from 'brave-ui/components/icons'
 
+import { LocaleContext } from '../localeContext'
 import { Container } from './style'
 
 interface GoBackLinkProps {
@@ -12,11 +13,12 @@ interface GoBackLinkProps {
 }
 
 export function GoBackLink (props: GoBackLinkProps) {
+  const locale = React.useContext(LocaleContext)
   return (
     <Container>
       <a href='javascript:void 0' onClick={props.onClick}>
         <CaratStrongLeftIcon />
-        Go Back
+        {locale.get('goBack')}
       </a>
     </Container>
   )

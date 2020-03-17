@@ -5,14 +5,16 @@
 import * as React from 'react'
 import { LoaderIcon } from 'brave-ui/components/icons'
 
+import { LocaleContext } from '../localeContext'
 import { Container } from './style'
 
 export function PaymentProcessing (props: {}) {
+  const locale = React.useContext(LocaleContext)
   return (
     <Container>
       <LoaderIcon />
       <div>
-        Your payment is being processed…
+        {locale.get('paymentProcessing')}
       </div>
     </Container>
   )

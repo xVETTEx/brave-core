@@ -4,6 +4,8 @@
 
 import styled from 'styled-components'
 
+import { LocaleData } from '../localeContext'
+
 export const Container = styled.div`
   padding: 7px 15px 28px;
   border-top: solid 1px ${p => p.theme.color.separatorLine};
@@ -37,12 +39,12 @@ export const Description = styled.div`
   padding-right: 4em;
 `
 
-export const BatAmount = styled.span`
+export const BatAmount = styled.span<{ locale: LocaleData }>`
   font-size: 18px;
   font-weight: 500;
 
   &::after {
-    content: "BAT";
+    content: "${p => p.locale.get('bat')}";
     padding-left: 5px;
     font-size: 16px;
     font-weight: normal;
