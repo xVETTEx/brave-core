@@ -168,20 +168,8 @@ SyncRecordPtr PrepareResolvedDevice(SyncDevice* device,
   return record;
 }
 
-struct IndexInParentComparator {
-  bool operator()(const bookmarks::BookmarkNode* lhs,
-                  const bookmarks::BookmarkNode* rhs) const {
-    DCHECK(lhs);
-    DCHECK(rhs);
-    // Nodes equal by object_id we want to sort by index in parent
-    // We need that to make easier the assigning of orders in the case
-    // when orders would be re-calculated on migration of object_id
-    return lhs->parent()->GetIndexOf(lhs) < rhs->parent()->GetIndexOf(rhs);
-  }
-};
-using SortedNodes = std::multiset<const bookmarks::BookmarkNode*,
-                                  IndexInParentComparator>;
-using ObjectIdToNodes = std::map<std::string, SortedNodes>;
+using NodesSet = std::set<const bookmarks::BookmarkNode*>;
+using ObjectIdToNodes = std::map<std::string, NodesSet>;
 
 void FillObjectsMap(const bookmarks::BookmarkNode* parent,
                     ObjectIdToNodes* object_id_nodes) {
@@ -198,25 +186,103 @@ void FillObjectsMap(const bookmarks::BookmarkNode* parent,
   }
 }
 
-void ClearDuplicatedNodes(ObjectIdToNodes* object_id_nodes,
-                          bookmarks::BookmarkModel* model) {
-  for (ObjectIdToNodes::iterator it_object_id = object_id_nodes->begin();
-       it_object_id != object_id_nodes->end(); ++it_object_id) {
-    const SortedNodes& nodes = it_object_id->second;
-    if (nodes.size() > 1) {
-      // Re-create all group of nodes which have the same object_id
-      for (SortedNodes::iterator it_nodes = nodes.begin();
-           it_nodes != nodes.end(); ++it_nodes) {
-        const bookmarks::BookmarkNode* node = *it_nodes;
-        // Copy and delete node
-        const auto* parent = node->parent();
-        size_t original_index = parent->GetIndexOf(node);
-        model->Copy(node, parent, original_index);
-        model->Remove(node);
+void GetTopMostFolders(const NodesSet* nodes_with_duplicates,
+                       NodesSet* top_most_folders) {
+  for (const bookmarks::BookmarkNode* node : *nodes_with_duplicates) {
+    if (node->is_folder()) {
+      // Only folders are interesed here
+      bool set_top_node = false;
+      bool node_under_top = false;
+      NodesSet nodes_to_remove;
+      for (const bookmarks::BookmarkNode* top_folder_entry :
+           *top_most_folders) {
+        if (top_folder_entry->HasAncestor(node)) {
+          // node
+          //  L..
+          //    |
+          //   ...
+          //    L top_folder_entry
+          // top_folder_entry is not a top most anymore
+          nodes_to_remove.insert(top_folder_entry);
+          set_top_node = true;
+        } else if (node->HasAncestor(top_folder_entry)) {
+          // top_folder_entry
+          //  L..
+          //    |
+          //   ...
+          //    L node
+          node_under_top = true;
+          break;
+        }
+      }
+
+      for (const auto* node_to_remove : nodes_to_remove) {
+        top_most_folders->erase(node_to_remove);
+      }
+
+      if (set_top_node || !node_under_top) {
+        // We have duplicated folder which is above already detected top node
+        // Or we found a new top node - the node not yet seen as child of
+        // detected top node
+        top_most_folders->insert(node);
       }
     }
   }
 }
+
+void FilterOutNestedNodes(NodesSet* nodes_with_duplicates,
+                          NodesSet* top_most_folders,
+                          NodesSet* filtered_nodes_with_duplicates) {
+  for (const bookmarks::BookmarkNode* node : *nodes_with_duplicates) {
+    bool include_into_delete = true;
+    for (const bookmarks::BookmarkNode* top_folder : *top_most_folders) {
+      if (top_folder != node && node->HasAncestor(top_folder)) {
+        // Don`t include the node if we are going to remove the parent folder
+        // Top folder must be included
+        include_into_delete = false;
+      }
+    }
+
+    if (include_into_delete) {
+      filtered_nodes_with_duplicates->insert(node);
+    }
+  }
+}
+
+void ClearDuplicatedNodes(ObjectIdToNodes* object_id_nodes,
+                          bookmarks::BookmarkModel* model) {
+  size_t nodes_recreated = 0;
+  NodesSet nodes_with_duplicates;
+  for (ObjectIdToNodes::iterator it_object_id = object_id_nodes->begin();
+       it_object_id != object_id_nodes->end(); ++it_object_id) {
+    const NodesSet& nodes = it_object_id->second;
+    if (nodes.size() > 1) {
+      nodes_with_duplicates.insert(nodes.begin(), nodes.end());
+    }
+  }
+
+  NodesSet top_most_folders;
+  GetTopMostFolders(&nodes_with_duplicates, &top_most_folders);
+
+  NodesSet filtered_nodes_with_duplicates;
+  FilterOutNestedNodes(&nodes_with_duplicates, &top_most_folders,
+                       &filtered_nodes_with_duplicates);
+
+  for (const bookmarks::BookmarkNode* node : filtered_nodes_with_duplicates) {
+    const auto* parent = node->parent();
+    size_t original_index = parent->GetIndexOf(node);
+    VLOG(1) << "[BraveSync] " << __func__
+            << " Copying node into index=" << original_index;
+    model->Copy(node, parent, original_index);
+    VLOG(1) << "[BraveSync] " << __func__ << " Removing original node";
+    model->Remove(node);
+    nodes_recreated++;
+  }
+
+  VLOG(1) << "[BraveSync] " << __func__
+          << " done nodes_recreated=" << nodes_recreated;
+}
+
 }  // namespace
 
 BraveProfileSyncServiceImpl::BraveProfileSyncServiceImpl(Profile* profile,
@@ -818,19 +884,18 @@ void BraveProfileSyncServiceImpl::MigrateDuplicatedBookmarksObjectIds(
   int migrated_version = profile->GetPrefs()->GetInteger(
       prefs::kDuplicatedBookmarksMigrateVersion);
 
-  if (migrated_version >= 1) {
+  if (migrated_version >= 2) {
     return;
   }
 
   // Copying bookmarks through brave://bookmarks page could duplicate brave sync
   // metadata, which caused crash during chromium sync run
-  // Go through nodes and re-create the oldest ones who have duplicated
-  // object_id
+  // Go through nodes and re-create those ones who have duplicated object_id
   ObjectIdToNodes object_id_nodes;
   FillObjectsMap(model->root_node(), &object_id_nodes);
   ClearDuplicatedNodes(&object_id_nodes, model);
 
-  profile->GetPrefs()->SetInteger(prefs::kDuplicatedBookmarksMigrateVersion, 1);
+  profile->GetPrefs()->SetInteger(prefs::kDuplicatedBookmarksMigrateVersion, 2);
 }
 
 std::unique_ptr<SyncRecord>
