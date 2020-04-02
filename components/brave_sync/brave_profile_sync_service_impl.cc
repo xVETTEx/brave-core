@@ -186,65 +186,11 @@ void FillObjectsMap(const bookmarks::BookmarkNode* parent,
   }
 }
 
-void GetTopMostFolders(const NodesSet* nodes_with_duplicates,
-                       NodesSet* top_most_folders) {
-  for (const bookmarks::BookmarkNode* node : *nodes_with_duplicates) {
+void AddDeletedChildren(const BookmarkNode* node, NodesSet* deleted_nodes) {
+  for (const auto& child : node->children()) {
+    deleted_nodes->insert(child.get());
     if (node->is_folder()) {
-      // Only folders are interesed here
-      bool set_top_node = false;
-      bool node_under_top = false;
-      NodesSet nodes_to_remove;
-      for (const bookmarks::BookmarkNode* top_folder_entry :
-           *top_most_folders) {
-        if (top_folder_entry->HasAncestor(node)) {
-          // node
-          //  L..
-          //    |
-          //   ...
-          //    L top_folder_entry
-          // top_folder_entry is not a top most anymore
-          nodes_to_remove.insert(top_folder_entry);
-          set_top_node = true;
-        } else if (node->HasAncestor(top_folder_entry)) {
-          // top_folder_entry
-          //  L..
-          //    |
-          //   ...
-          //    L node
-          node_under_top = true;
-          break;
-        }
-      }
-
-      for (const auto* node_to_remove : nodes_to_remove) {
-        top_most_folders->erase(node_to_remove);
-      }
-
-      if (set_top_node || !node_under_top) {
-        // We have duplicated folder which is above already detected top node
-        // Or we found a new top node - the node not yet seen as child of
-        // detected top node
-        top_most_folders->insert(node);
-      }
-    }
-  }
-}
-
-void FilterOutNestedNodes(NodesSet* nodes_with_duplicates,
-                          NodesSet* top_most_folders,
-                          NodesSet* filtered_nodes_with_duplicates) {
-  for (const bookmarks::BookmarkNode* node : *nodes_with_duplicates) {
-    bool include_into_delete = true;
-    for (const bookmarks::BookmarkNode* top_folder : *top_most_folders) {
-      if (top_folder != node && node->HasAncestor(top_folder)) {
-        // Don`t include the node if we are going to remove the parent folder
-        // Top folder must be included
-        include_into_delete = false;
-      }
-    }
-
-    if (include_into_delete) {
-      filtered_nodes_with_duplicates->insert(node);
+      AddDeletedChildren(child.get(), deleted_nodes);
     }
   }
 }
@@ -261,14 +207,18 @@ void ClearDuplicatedNodes(ObjectIdToNodes* object_id_nodes,
     }
   }
 
-  NodesSet top_most_folders;
-  GetTopMostFolders(&nodes_with_duplicates, &top_most_folders);
+  NodesSet deleted_nodes;
+  for (const bookmarks::BookmarkNode* node : nodes_with_duplicates) {
+    if (deleted_nodes.find(node) != deleted_nodes.end()) {
+      // Node already has been deleted
+      continue;
+    }
 
-  NodesSet filtered_nodes_with_duplicates;
-  FilterOutNestedNodes(&nodes_with_duplicates, &top_most_folders,
-                       &filtered_nodes_with_duplicates);
+    deleted_nodes.insert(node);
+    if (node->is_folder()) {
+      AddDeletedChildren(node, &deleted_nodes);
+    }
 
-  for (const bookmarks::BookmarkNode* node : filtered_nodes_with_duplicates) {
     const auto* parent = node->parent();
     size_t original_index = parent->GetIndexOf(node);
     VLOG(1) << "[BraveSync] " << __func__
