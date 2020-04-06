@@ -1,0 +1,54 @@
+diff --git a/components/sync_bookmarks/bookmark_model_type_processor.cc b/components/sync_bookmarks/bookmark_model_type_processor.cc
+index 4164377c989108c72c1cf7837a57110aecbbc101..4b9a1f07b23ec7df7d97ff0db9f0471fe7634e66 100644
+--- a/components/sync_bookmarks/bookmark_model_type_processor.cc
++++ b/components/sync_bookmarks/bookmark_model_type_processor.cc
+@@ -200,6 +200,17 @@ void BookmarkModelTypeProcessor::OnCommitCompleted(
+     const syncer::FailedCommitResponseDataList& error_response_list) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++  VLOG(1) << "[BraveSync] " << __func__ << " 000 committed_response_list.size()=" << committed_response_list.size();
++  for (const syncer::CommitResponseData& response : committed_response_list) {
++    VLOG(1) << "[BraveSync] " << __func__ << " response.id               =" << response.id;
++    VLOG(1) << "[BraveSync] " << __func__ << " response.id_in_request    =" << response.id_in_request;
++    VLOG(1) << "[BraveSync] " << __func__ << " response.client_tag_hash  =" << response.client_tag_hash;
++    VLOG(1) << "[BraveSync] " << __func__ << " response.sequence_number  =" << response.sequence_number;
++    VLOG(1) << "[BraveSync] " << __func__ << " response.response_version =" << response.response_version;
++    VLOG(1) << "[BraveSync] " << __func__ << " response.specifics_hash   =" << response.specifics_hash;
++    VLOG(1) << "[BraveSync] " << __func__ << " response.unsynced_time    =" << response.unsynced_time;
++  }
++
+   // |error_response_list| is ignored, because all errors are treated as
+   // transientand the processor with eventually retry.
+ 
+@@ -278,6 +289,7 @@ void BookmarkModelTypeProcessor::ModelReadyToSync(
+   DCHECK(!bookmark_tracker_);
+   DCHECK(!bookmark_model_observer_);
+ 
++  VLOG(1) << "[BraveSync] " << __func__ << " START";
+   // TODO(crbug.com/950869): Remove after investigations are completed.
+   TRACE_EVENT0("browser", "BookmarkModelTypeProcessor::ModelReadyToSync");
+ 
+@@ -287,6 +299,23 @@ void BookmarkModelTypeProcessor::ModelReadyToSync(
+   base::TimeTicks start_time = base::TimeTicks::Now();
+   sync_pb::BookmarkModelMetadata model_metadata;
+   model_metadata.ParseFromString(metadata_str);
++  //model_metadata.model_type_state();
++  VLOG(1) << "[BraveSync] " << __func__ << " model_metadata.bookmarks_metadata_size()=" << model_metadata.bookmarks_metadata_size();
++  for (const sync_pb::BookmarkMetadata& bookmark_metadata : model_metadata.bookmarks_metadata()) {
++    VLOG(1) << "[BraveSync] " << __func__ << "------";
++    VLOG(1) << "[BraveSync] " << __func__ << " bookmark_metadata.id()=" << bookmark_metadata.id();
++    //bookmark_metadata.metadata().client_tag_hash();
++    VLOG(1) << "[BraveSync] " << __func__ << " bookmark_metadata.metadata().server_id()=" << bookmark_metadata.metadata().server_id();
++    //bookmark_metadata.metadata().specifics_hash();
++    //bookmark_metadata.metadata().base_specifics_hash();
++    //bookmark_metadata.metadata().unique_position();
++    VLOG(1) << "[BraveSync] " << __func__ << " bookmark_metadata.metadata().sequence_number()=" << bookmark_metadata.metadata().sequence_number();
++    VLOG(1) << "[BraveSync] " << __func__ << " bookmark_metadata.metadata().acked_sequence_number()=" << bookmark_metadata.metadata().acked_sequence_number();
++    //bookmark_metadata.metadata().modification_time();
++    VLOG(1) << "[BraveSync] " << __func__ << " bookmark_metadata.metadata().is_deleted()=" << bookmark_metadata.metadata().is_deleted();
++    VLOG(1) << "[BraveSync] " << __func__ << " bookmark_metadata.metadata().server_version()=" << bookmark_metadata.metadata().server_version();
++    VLOG(1) << "[BraveSync] " << __func__ << "------";
++  }
+ 
+   bookmark_tracker_ = SyncedBookmarkTracker::CreateFromBookmarkModelAndMetadata(
+       model, std::move(model_metadata));

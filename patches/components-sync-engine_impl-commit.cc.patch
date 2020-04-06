@@ -1,12 +1,14 @@
 diff --git a/components/sync/engine_impl/commit.cc b/components/sync/engine_impl/commit.cc
-index 76a01993d12cccfbdd97c9252ba757428682dbb3..2d323d1feba598bad86fa49d040fb4c3c29fab38 100644
+index 76a01993d12cccfbdd97c9252ba757428682dbb3..e41adc60268333300c52b4e603b56514ccdba138 100644
 --- a/components/sync/engine_impl/commit.cc
 +++ b/components/sync/engine_impl/commit.cc
-@@ -132,6 +132,7 @@ SyncerError Commit::PostAndProcessResponse(
+@@ -132,6 +132,9 @@ SyncerError Commit::PostAndProcessResponse(
    sync_pb::ClientToServerResponse response;
    const SyncerError post_result = SyncerProtoUtil::PostClientToServerMessage(
        message_, &response, cycle, nullptr);
++  VLOG(1) << "[BraveSync] " << __func__ << " before BRAVE_COMMIT_POST_AND_PROCESS_RESPONSE";
 +  BRAVE_COMMIT_POST_AND_PROCESS_RESPONSE
++  VLOG(1) << "[BraveSync] " << __func__ << " after BRAVE_COMMIT_POST_AND_PROCESS_RESPONSE";
    TRACE_EVENT_END0("sync", "PostCommit");
  
    // TODO(rlarocque): Use result that includes errors captured later?

@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc b/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc
+index 492a0be24cb8c2d21d30bc426ecafa0083204da8..4bc5221dd37696672cb53a1b2cdac107bc7de79f 100644
+--- a/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc
++++ b/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc
+@@ -1154,7 +1154,7 @@ void BookmarkBarView::BookmarkModelLoaded(BookmarkModel* model,
+   // There should be no buttons. If non-zero it means Load was invoked more than
+   // once, or we didn't properly clear things. Either of which shouldn't happen.
+   // The actual bookmark buttons are added from Layout().
+-  DCHECK(bookmark_buttons_.empty());
++//BRAVETEST  DCHECK(bookmark_buttons_.empty());
+   DCHECK(model->other_node());
+   other_bookmarks_button_->SetAccessibleName(model->other_node()->GetTitle());
+   other_bookmarks_button_->SetText(model->other_node()->GetTitle());
