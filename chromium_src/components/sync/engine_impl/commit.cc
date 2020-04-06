@@ -50,6 +50,9 @@ void CreateSuccessfulCommitResponse(
   response->set_version(entity.version() + 1);
   response->set_parent_id_string(entity.parent_id_string());
 
+  VLOG(1) << "[BraveSync] " << __func__ << " new_object_id=" << new_object_id;
+  VLOG(1) << "[BraveSync] " << __func__ << " entity.id_string()=" <<
+      entity.id_string();
   if (new_object_id.empty())
     response->set_id_string(entity.id_string());
   else
@@ -86,7 +89,10 @@ brave_sync::RecordsListPtr ConvertCommitsToBraveRecords(
   const sync_pb::CommitMessage& commit_message = message->commit();
   const std::string cache_guid = commit_message.cache_guid();
   bool other_bookmarks_record_created = false;
+  VLOG(1) << "[BraveSync] " << __func__ << " commit_message.entries_size()=" <<
+      commit_message.entries_size();
   for (int i = 0; i < commit_message.entries_size(); ++i) {
+    VLOG(1) << "[BraveSync] " << __func__ << " i=" << i;
     sync_pb::SyncEntity entity = commit_message.entries(i);
     std::string new_object_id;
     if (entity.specifics().has_bookmark()) {
@@ -114,6 +120,8 @@ brave_sync::RecordsListPtr ConvertCommitsToBraveRecords(
           bookmark->order = bm_specifics.meta_info(i).value();
         } else if (bm_specifics.meta_info(i).key() == "object_id") {
           new_object_id = bm_specifics.meta_info(i).value();
+          VLOG(1) << "[BraveSync] " << __func__ << " new_object_id=" <<
+              new_object_id;
         } else if (bm_specifics.meta_info(i).key() == "parent_object_id") {
           bookmark->parentFolderObjectId = bm_specifics.meta_info(i).value();
         } else if (bm_specifics.meta_info(i).key() == "sync_timestamp") {
@@ -139,6 +147,10 @@ brave_sync::RecordsListPtr ConvertCommitsToBraveRecords(
           record->action = brave_sync::jslib::SyncRecord::Action::A_UPDATE;
       }
 
+      VLOG(1) << "[BraveSync] " << __func__ <<
+          " entity.deleted()=" << entity.deleted() <<
+          " entity.version()=" << entity.version() <<
+          " record->objectId=" << record->objectId;
       if (entity.deleted() && entity.version() == 0 &&
         record->objectId.empty()) {
         // This is for recover profile after crash with duplicated object ids
@@ -149,6 +161,9 @@ brave_sync::RecordsListPtr ConvertCommitsToBraveRecords(
         record->objectId = brave_sync::tools::GenerateObjectId();
         record->action = brave_sync::jslib::SyncRecord::Action::A_DELETE;
       }
+      VLOG(1) << "[BraveSync] " << __func__ <<
+          " record->action=" << record->action <<
+          " record->objectId=" << record->objectId;
 
       DCHECK(!record->objectId.empty());
 

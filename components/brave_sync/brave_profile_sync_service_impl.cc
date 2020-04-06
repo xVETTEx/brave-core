@@ -203,6 +203,8 @@ void ClearDuplicatedNodes(ObjectIdToNodes* object_id_nodes,
        it_object_id != object_id_nodes->end(); ++it_object_id) {
     const NodesSet& nodes = it_object_id->second;
     if (nodes.size() > 1) {
+      VLOG(1) << "[BraveSync] " << __func__ << " for object_id=" <<
+          it_object_id->first << " nodes.size()=" << nodes.size();
       nodes_with_duplicates.insert(nodes.begin(), nodes.end());
     }
   }
@@ -231,6 +233,31 @@ void ClearDuplicatedNodes(ObjectIdToNodes* object_id_nodes,
 
   VLOG(1) << "[BraveSync] " << __func__
           << " done nodes_recreated=" << nodes_recreated;
+}
+
+void TraceBookmarks(const bookmarks::BookmarkNode* parent, size_t ident) {
+  for (size_t i = 0; i < parent->children().size(); ++i) {
+    const bookmarks::BookmarkNode* current_child = parent->children()[i].get();
+    std::string object_id;
+    current_child->GetMetaInfo("object_id", &object_id);
+    std::string order;
+    current_child->GetMetaInfo("order", &order);
+    std::string sync_timestamp;
+    current_child->GetMetaInfo("sync_timestamp", &sync_timestamp);
+    std::string version;
+    current_child->GetMetaInfo("version", &version);
+
+    std::string s(ident, ' ');
+    VLOG(1) << s << "i=" << i;
+    VLOG(1) << s << "current_child_ptr=" << current_child;
+    VLOG(1) << s << "object_id=" << object_id;
+    VLOG(1) << s << "order=" << order;
+    VLOG(1) << s << "sync_timestamp=" << sync_timestamp;
+    VLOG(1) << s << "version=" << version;
+    if (current_child->is_folder()) {
+      TraceBookmarks(current_child, ident + 3);
+    }
+  }
 }
 
 }  // namespace
@@ -833,10 +860,18 @@ void BraveProfileSyncServiceImpl::MigrateDuplicatedBookmarksObjectIds(
 
   int migrated_version = profile->GetPrefs()->GetInteger(
       prefs::kDuplicatedBookmarksMigrateVersion);
+  VLOG(1) << "[BraveSync] " << __func__ << " migrated_version=" <<
+      migrated_version;
+
+  VLOG(1) << "[BraveSync] " << __func__ << " Bookmarks:";
+  TraceBookmarks(model->root_node(), 0);
 
   if (migrated_version >= 2) {
+    VLOG(1) << "[BraveSync] " << __func__ << " Migration is not required";
     return;
   }
+
+  VLOG(1) << "[BraveSync] " << __func__ << " Migration is required";
 
   // Copying bookmarks through brave://bookmarks page could duplicate brave sync
   // metadata, which caused crash during chromium sync run
@@ -844,6 +879,9 @@ void BraveProfileSyncServiceImpl::MigrateDuplicatedBookmarksObjectIds(
   ObjectIdToNodes object_id_nodes;
   FillObjectsMap(model->root_node(), &object_id_nodes);
   ClearDuplicatedNodes(&object_id_nodes, model);
+
+  VLOG(1) << "[BraveSync] " << __func__ << " Bookmarks after migration:";
+  TraceBookmarks(model->root_node(), 0);
 
   profile->GetPrefs()->SetInteger(prefs::kDuplicatedBookmarksMigrateVersion, 2);
 }

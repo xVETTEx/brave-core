@@ -15,7 +15,7 @@ namespace {
 
 void SetOrder(const bookmarks::BookmarkNode* node,
               const std::string& parent_order) {
-  DCHECK(!parent_order.empty());
+//  DCHECK(!parent_order.empty());
   int index = node->parent()->GetIndexOf(node);
 
   bookmarks::BookmarkNode* parent = tools::AsMutable(node->parent());
