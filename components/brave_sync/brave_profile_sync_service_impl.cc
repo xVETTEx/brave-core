@@ -249,7 +249,9 @@ void TraceBookmarks(const bookmarks::BookmarkNode* parent, size_t ident) {
 
     std::string s(ident, ' ');
     VLOG(1) << s << "i=" << i;
+    VLOG(1) << s << "current_child->id()=" << current_child->id();
     VLOG(1) << s << "current_child_ptr=" << current_child;
+    VLOG(1) << s << "current_child->is_folder()=" << current_child->is_folder();
     VLOG(1) << s << "object_id=" << object_id;
     VLOG(1) << s << "order=" << order;
     VLOG(1) << s << "sync_timestamp=" << sync_timestamp;
