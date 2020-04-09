@@ -1,0 +1,18 @@
+diff --git a/components/sync_bookmarks/bookmark_model_observer_impl.cc b/components/sync_bookmarks/bookmark_model_observer_impl.cc
+index bee1c498db750f03319d9cd341234e930726562f..49aa2ce5e948cc735e06be2f3eaa78b35b8bb981 100644
+--- a/components/sync_bookmarks/bookmark_model_observer_impl.cc
++++ b/components/sync_bookmarks/bookmark_model_observer_impl.cc
+@@ -108,6 +108,13 @@ void BookmarkModelObserverImpl::BookmarkNodeAdded(
+   sync_pb::EntitySpecifics specifics =
+       CreateSpecificsFromBookmarkNode(node, model, /*force_favicon_load=*/true,
+                                       /*include_guid=*/true);
++
++  VLOG(1) << "[BraveSync] " << __func__ << " will call bookmark_tracker_->Add()";
++  VLOG(1) << "[BraveSync] " << __func__ << " remote_update_entity.id="<<sync_id;
++  VLOG(1) << "[BraveSync] " << __func__ << " local_subtree_root->id()="<<node->id();
++  std::string brave_object_id;
++  node->GetMetaInfo("object_id", &brave_object_id);
++  VLOG(1) << "[BraveSync] " << __func__ << " brave_object_id="<<brave_object_id;
+   bookmark_tracker_->Add(sync_id, node, server_version, creation_time,
+                          unique_position, specifics);
+   // Mark the entity that it needs to be committed.

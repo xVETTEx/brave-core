@@ -1,0 +1,56 @@
+diff --git a/components/sync_bookmarks/bookmark_model_merger.cc b/components/sync_bookmarks/bookmark_model_merger.cc
+index c0b942464c9b530e9a6b6d7cc68cfb785faef4ac..d099c02dcd697ebd56002205d33deb98cd89280a 100644
+--- a/components/sync_bookmarks/bookmark_model_merger.cc
++++ b/components/sync_bookmarks/bookmark_model_merger.cc
+@@ -21,7 +21,7 @@
+ #include "components/sync_bookmarks/bookmark_specifics_conversions.h"
+ #include "components/sync_bookmarks/synced_bookmark_tracker.h"
+ #include "ui/base/models/tree_node_iterator.h"
+-
++  #include "base/debug/stack_trace.h" //AB:
+ using syncer::EntityData;
+ using syncer::UpdateResponseData;
+ using syncer::UpdateResponseDataList;
+@@ -417,6 +417,14 @@ void BookmarkModelMerger::MergeSubtree(
+     const bookmarks::BookmarkNode* local_subtree_root,
+     const RemoteTreeNode& remote_node) {
+   const EntityData& remote_update_entity = remote_node.entity();
++  VLOG(1) << "[BraveSync] " << __func__ << " stack=" << base::debug::StackTrace().ToString();//AB:
++  VLOG(1) << "[BraveSync] " << __func__ << " will call bookmark_tracker_->Add()";
++  VLOG(1) << "[BraveSync] " << __func__ << " remote_update_entity.id="<<remote_update_entity.id;
++  VLOG(1) << "[BraveSync] " << __func__ << " local_subtree_root->id()="<<local_subtree_root->id();
++  std::string brave_object_id;
++  local_subtree_root->GetMetaInfo("object_id", &brave_object_id);
++  VLOG(1) << "[BraveSync] " << __func__ << " brave_object_id="<<brave_object_id;
++
+   bookmark_tracker_->Add(
+       remote_update_entity.id, local_subtree_root,
+       remote_node.response_version(), remote_update_entity.creation_time,
+@@ -562,6 +570,13 @@ void BookmarkModelMerger::ProcessRemoteCreation(
+                 << specifics.bookmark().url();
+     return;
+   }
++
++  VLOG(1) << "[BraveSync] " << __func__ << " will call bookmark_tracker_->Add()";
++  VLOG(1) << "[BraveSync] " << __func__ << " remote_update_entity.id="<<remote_update_entity.id;
++  VLOG(1) << "[BraveSync] " << __func__ << " bookmark_node->id()="<<bookmark_node->id();
++  std::string brave_object_id;
++  bookmark_node->GetMetaInfo("object_id", &brave_object_id);
++  VLOG(1) << "[BraveSync] " << __func__ << " brave_object_id="<<brave_object_id;
+   bookmark_tracker_->Add(remote_update_entity.id, bookmark_node,
+                          remote_node.response_version(),
+                          remote_update_entity.creation_time,
+@@ -627,6 +642,13 @@ void BookmarkModelMerger::ProcessLocalCreation(
+   const sync_pb::EntitySpecifics specifics = CreateSpecificsFromBookmarkNode(
+       node, bookmark_model_, /*force_favicon_load=*/true,
+       /*include_guid=*/true);
++
++  VLOG(1) << "[BraveSync] " << __func__ << " will call bookmark_tracker_->Add()";
++  VLOG(1) << "[BraveSync] " << __func__ << " sync_id="<<sync_id;
++  VLOG(1) << "[BraveSync] " << __func__ << " node->id()="<<node->id();
++  std::string brave_object_id;
++  node->GetMetaInfo("object_id", &brave_object_id);
++  VLOG(1) << "[BraveSync] " << __func__ << " brave_object_id="<<brave_object_id;
+   bookmark_tracker_->Add(sync_id, node, server_version, creation_time,
+                          pos.ToProto(), specifics);
+   // Mark the entity that it needs to be committed.

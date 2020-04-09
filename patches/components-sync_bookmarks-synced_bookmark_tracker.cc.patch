@@ -1,8 +1,39 @@
 diff --git a/components/sync_bookmarks/synced_bookmark_tracker.cc b/components/sync_bookmarks/synced_bookmark_tracker.cc
-index 559ece6b2d651317b6871981ab9f024d0cb55455..d1931080f6cbcc81ed1dfc14d5bdb4235be32351 100644
+index 559ece6b2d651317b6871981ab9f024d0cb55455..c08a909c3acce8bbc77b231370d9653883dcacc7 100644
 --- a/components/sync_bookmarks/synced_bookmark_tracker.cc
 +++ b/components/sync_bookmarks/synced_bookmark_tracker.cc
-@@ -505,6 +505,18 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
+@@ -232,6 +232,8 @@ void SyncedBookmarkTracker::Add(const std::string& sync_id,
+   // TODO(crbug.com/516866): The below CHECK is added to debug some crashes.
+   // Should be removed after figuring out the reason for the crash.
+   CHECK_EQ(0U, sync_id_to_entities_map_.count(sync_id));
++  VLOG(1) << "[BraveSync] " << __func__ << " insert into sync_id_to_entities_map_ sync_id="<<sync_id;
++  VLOG(1) << "[BraveSync] " << __func__ << " bookmark_node->id()=" << bookmark_node->id();
+   sync_id_to_entities_map_[sync_id] = std::move(entity);
+ }
+ 
+@@ -295,6 +297,8 @@ void SyncedBookmarkTracker::Remove(const std::string& sync_id) {
+   DCHECK(entity);
+   bookmark_node_to_entities_map_.erase(entity->bookmark_node());
+   base::Erase(ordered_local_tombstones_, entity);
++  VLOG(1) << "[BraveSync] " << __func__ << " erase sync_id_to_entities_map_ sync_id=" << sync_id;
++  VLOG(1) << "[BraveSync] " << __func__ << " entity->bookmark_node()->id()=" << entity->bookmark_node()->id();
+   sync_id_to_entities_map_.erase(sync_id);
+ }
+ 
+@@ -446,6 +450,7 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
+           /*node=*/nullptr, std::make_unique<sync_pb::EntityMetadata>(std::move(
+                                 *bookmark_metadata.mutable_metadata())));
+       ordered_local_tombstones_.push_back(tombstone_entity.get());
++VLOG(1) << "[BraveSync] " << __func__ << " insert (tombstone) into sync_id_to_entities_map_ sync_id="<<sync_id;
+       sync_id_to_entities_map_[sync_id] = std::move(tombstone_entity);
+       continue;
+     }
+@@ -502,9 +507,23 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
+                   std::move(*bookmark_metadata.mutable_metadata())));
+     entity->set_commit_may_have_started(true);
+     bookmark_node_to_entities_map_[node] = entity.get();
++VLOG(1) << "[BraveSync] " << __func__ << " insert into sync_id_to_entities_map_ sync_id="<<sync_id;
++VLOG(1) << "[BraveSync] " << __func__ << " node->id()=" << node->id();
      sync_id_to_entities_map_[sync_id] = std::move(entity);
    }
  
@@ -21,7 +52,7 @@ index 559ece6b2d651317b6871981ab9f024d0cb55455..d1931080f6cbcc81ed1dfc14d5bdb423
    // See if there are untracked entities in the BookmarkModel.
    std::vector<int> model_node_ids;
    ui::TreeNodeIterator<const bookmarks::BookmarkNode> iterator(
-@@ -515,6 +527,7 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
+@@ -515,6 +534,7 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
        continue;
      }
      if (bookmark_node_to_entities_map_.count(node) == 0) {
@@ -29,7 +60,7 @@ index 559ece6b2d651317b6871981ab9f024d0cb55455..d1931080f6cbcc81ed1dfc14d5bdb423
        return CorruptionReason::UNTRACKED_BOOKMARK;
      }
    }
-@@ -525,6 +538,7 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
+@@ -525,6 +545,7 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
            client_tag_mismatch_found, bookmark_without_client_tag_found));
  
    CheckAllNodesTracked(model);
@@ -37,7 +68,7 @@ index 559ece6b2d651317b6871981ab9f024d0cb55455..d1931080f6cbcc81ed1dfc14d5bdb423
    return CorruptionReason::NO_CORRUPTION;
  }
  
-@@ -599,6 +613,11 @@ void SyncedBookmarkTracker::UpdateUponCommitResponse(
+@@ -599,6 +620,11 @@ void SyncedBookmarkTracker::UpdateUponCommitResponse(
      const std::string& new_id,
      int64_t acked_sequence_number,
      int64_t server_version) {
@@ -49,7 +80,7 @@ index 559ece6b2d651317b6871981ab9f024d0cb55455..d1931080f6cbcc81ed1dfc14d5bdb423
    // TODO(crbug.com/516866): Update specifics if we decide to keep it.
    Entity* entity = GetMutableEntityForSyncId(old_id);
    if (!entity) {
-@@ -620,7 +639,10 @@ void SyncedBookmarkTracker::UpdateUponCommitResponse(
+@@ -620,13 +646,20 @@ void SyncedBookmarkTracker::UpdateUponCommitResponse(
  void SyncedBookmarkTracker::UpdateSyncForLocalCreationIfNeeded(
      const std::string& old_id,
      const std::string& new_id) {
@@ -59,4 +90,15 @@ index 559ece6b2d651317b6871981ab9f024d0cb55455..d1931080f6cbcc81ed1dfc14d5bdb423
 +    VLOG(1) << "[BraveSync] " << __func__ << " early exit ids are equal";
      return;
    }
++
++  VLOG(1) << "[BraveSync] " << __func__ << " sync_id_to_entities_map_.count(old_id)=" << sync_id_to_entities_map_.count(old_id);
++  VLOG(1) << "[BraveSync] " << __func__ << " sync_id_to_entities_map_.count(new_id)=" << sync_id_to_entities_map_.count(new_id);
++
    // TODO(crbug.com/516866): The below CHECK is added to debug some crashes.
+   // Should be removed after figuring out the reason for the crash.
+   CHECK_EQ(1U, sync_id_to_entities_map_.count(old_id));
+-  CHECK_EQ(0U, sync_id_to_entities_map_.count(new_id));
++  CHECK_EQ(0U, sync_id_to_entities_map_.count(new_id)); // <== crashed here
+ 
+   std::unique_ptr<Entity> entity =
+       std::move(sync_id_to_entities_map_.at(old_id));

@@ -1,5 +1,5 @@
 diff --git a/components/sync_bookmarks/bookmark_remote_updates_handler.cc b/components/sync_bookmarks/bookmark_remote_updates_handler.cc
-index f39e969dfe0099cd6f0ce31fb63b59360b5b6b16..be7f05370b84fd7e182b6fdfda7b3754c62275e3 100644
+index f39e969dfe0099cd6f0ce31fb63b59360b5b6b16..fe7dae54b4dcde784758a63e4d8d55c86ae5edb9 100644
 --- a/components/sync_bookmarks/bookmark_remote_updates_handler.cc
 +++ b/components/sync_bookmarks/bookmark_remote_updates_handler.cc
 @@ -147,6 +147,7 @@ void ApplyRemoteUpdate(
@@ -22,3 +22,17 @@ index f39e969dfe0099cd6f0ce31fb63b59360b5b6b16..be7f05370b84fd7e182b6fdfda7b3754
            ComputeChildNodeIndex(parent_node, update_entity.unique_position,
                                  bookmark_tracker_),
            update_entity.is_folder, bookmark_model_, favicon_service_);
+@@ -488,6 +491,13 @@ bool BookmarkRemoteUpdatesHandler::ProcessCreate(
+     LogProblematicBookmark(RemoteBookmarkUpdateError::kCreationFailure);
+     return false;
+   }
++
++  VLOG(1) << "[BraveSync] " << __func__ << " will call bookmark_tracker_->Add()";
++  VLOG(1) << "[BraveSync] " << __func__ << " update_entity.id="<<update_entity.id;
++  VLOG(1) << "[BraveSync] " << __func__ << " bookmark_node->id()="<<bookmark_node->id();
++  std::string brave_object_id;
++  bookmark_node->GetMetaInfo("object_id", &brave_object_id);
++  VLOG(1) << "[BraveSync] " << __func__ << " brave_object_id="<<brave_object_id;
+   bookmark_tracker_->Add(update_entity.id, bookmark_node,
+                          update.response_version, update_entity.creation_time,
+                          update_entity.unique_position,
