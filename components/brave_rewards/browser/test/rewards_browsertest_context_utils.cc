@@ -393,4 +393,26 @@ void IsMediaTipsInjected(content::WebContents* context, bool should_appear) {
   WaitForElementToAppear(context, ".action-brave-tip", should_appear);
 }
 
+std::vector<double> GetSiteBannerTipOptions(
+      content::WebContents* site_banner) {
+  WaitForElementToAppear(site_banner, "[data-test-id=amount-wrapper] div span");
+  auto options = content::EvalJs(
+      site_banner,
+      R"(
+          const delay = t => new Promise(resolve => setTimeout(resolve, t));
+          delay(500).then(() => Array.prototype.map.call(
+              document.querySelectorAll(
+                  "[data-test-id=amount-wrapper] div span"),
+              node => parseFloat(node.innerText)))
+      )",
+      content::EXECUTE_SCRIPT_DEFAULT_OPTIONS,
+      content::ISOLATED_WORLD_ID_CONTENT_END).ExtractList();
+
+  std::vector<double> result;
+  for (const auto& value : options.GetList()) {
+    result.push_back(value.GetDouble());
+  }
+  return result;
+}
+
 }  // namespace rewards_browsertest_utils

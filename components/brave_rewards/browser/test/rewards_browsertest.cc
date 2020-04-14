@@ -24,12 +24,13 @@
 #include "brave/browser/ui/views/location_bar/brave_location_bar_view.h"
 #include "brave/common/brave_paths.h"
 #include "brave/common/extensions/extension_constants.h"
-#include "brave/components/brave_rewards/browser/test/rewards_browsertest_context_utils.h" // NOLINT
 #include "brave/components/brave_rewards/browser/rewards_notification_service_impl.h"  // NOLINT
 #include "brave/components/brave_rewards/browser/rewards_notification_service_observer.h"  // NOLINT
 #include "brave/browser/brave_rewards/rewards_service_factory.h"
 #include "brave/components/brave_rewards/browser/rewards_service_impl.h"
 #include "brave/components/brave_rewards/browser/rewards_service_observer.h"
+#include "brave/components/brave_rewards/browser/test/rewards_browsertest_context_utils.h" // NOLINT
+#include "brave/components/brave_rewards/browser/test/rewards_browsertest_utils.h" // NOLINT
 #include "brave/components/brave_rewards/common/pref_names.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -41,8 +42,6 @@
 #include "content/public/browser/notification_types.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
-#include "net/test/embedded_test_server/http_request.h"
-#include "net/test/embedded_test_server/http_response.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -52,84 +51,6 @@ using braveledger_request_util::ServerTypes;
 
 using RewardsNotificationType =
     brave_rewards::RewardsNotificationService::RewardsNotificationType;
-
-namespace {
-
-std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
-    const net::test_server::HttpRequest& request) {
-  std::unique_ptr<net::test_server::BasicHttpResponse> http_response(
-      new net::test_server::BasicHttpResponse());
-  http_response->set_code(net::HTTP_OK);
-  http_response->set_content_type("text/html");
-  if (request.relative_url == "/twitter") {
-    http_response->set_content(
-        "<html>"
-        "  <head></head>"
-        "  <body>"
-        "    <div data-testid='tweet' data-tweet-id='123'>"
-        "      <a href='/status/123'></a>"
-        "      <div role='group'>Hello, Twitter!</div>"
-        "    </div>"
-        "  </body>"
-        "</html>");
-  } else if (request.relative_url == "/oldtwitter") {
-    http_response->set_content(
-        "<html>"
-        "  <head></head>"
-        "  <body>"
-        "    <div class='tweet' data-tweet-id='123'>"
-        "      <div class='js-actions'>Hello, Twitter!</div>"
-        "    </div>"
-        "  </body>"
-        "</html>");
-  } else if (request.relative_url == "/reddit") {
-    http_response->set_content(
-      "<html>"
-        "  <head></head>"
-        "  <body>"
-        "    <div class='Comment'>"
-        "      <div>"
-        "        <button aria-label='more options'>"
-        "        </button>"
-        "      </div>"
-        "    </div>"
-        "  </body>"
-        "</html>");
-  } else if (request.relative_url == "/github") {
-    http_response->set_content(
-      "<html>"
-        "  <head></head>"
-        "  <body>"
-        "   <div class='timeline-comment-actions'>"
-        "     <div>GitHubCommentReactsButton</div>"
-        "     <div>GitHubCommentElipsesButton</div>"
-        "   </div>"
-        " </body>"
-        "</html>");
-  } else {
-    http_response->set_content(
-        "<html>"
-        "  <head></head>"
-        "  <body>"
-        "    <div>Hello, world!</div>"
-        "  </body>"
-        "</html>");
-  }
-  return std::move(http_response);
-}
-
-bool URLMatches(const std::string& url,
-                const std::string& path,
-                const std::string& prefix,
-                const ServerTypes& server) {
-  const std::string target_url =
-      braveledger_request_util::BuildUrl(path, prefix, server);
-  return (url.find(target_url) == 0);
-}
-
-enum class ContributionType { OneTimeTip, MonthlyTip };
-
-}  // namespace
 
 namespace brave_test_resp {
   std::string registrarVK_;
@@ -179,7 +100,8 @@ class BraveRewardsBrowserTest
     https_server_.reset(new net::EmbeddedTestServer(
         net::test_server::EmbeddedTestServer::TYPE_HTTPS));
     https_server_->SetSSLConfig(net::EmbeddedTestServer::CERT_OK);
-    https_server_->RegisterRequestHandler(base::BindRepeating(&HandleRequest));
+    https_server_->RegisterRequestHandler(
+        base::BindRepeating(&rewards_browsertest_utils::HandleRequest));
     ASSERT_TRUE(https_server_->Start());
 
     brave::RegisterPathProvider();
@@ -248,53 +170,6 @@ class BraveRewardsBrowserTest
     "}";
   }
 
-  std::string GetUpholdUser() {
-    const std::string verified = verified_wallet_
-        ? "2018-08-01T09:53:51.258Z"
-        : "null";
-
-    const std::string status = verified_wallet_
-        ? "ok"
-        : "pending";
-
-    const std::string name = "Test User";
-
-    return base::StringPrintf(
-      "{"
-        "\"name\": \"%s\","
-        "\"memberAt\": \"%s\","
-        "\"status\": \"%s\","
-        "\"currencies\": [\"BAT\"]"
-      "}",
-      name.c_str(),
-      verified.c_str(),
-      status.c_str());
-  }
-
-  std::vector<double> GetSiteBannerTipOptions(
-      content::WebContents* site_banner) {
-    rewards_browsertest_utils::WaitForElementToAppear(
-        site_banner,
-        "[data-test-id=amount-wrapper] div span");
-    auto options = content::EvalJs(
-        site_banner,
-        R"(
-            const delay = t => new Promise(resolve => setTimeout(resolve, t));
-            delay(500).then(() => Array.prototype.map.call(
-                document.querySelectorAll(
-                    "[data-test-id=amount-wrapper] div span"),
-                node => parseFloat(node.innerText)))
-        )",
-        content::EXECUTE_SCRIPT_DEFAULT_OPTIONS,
-        content::ISOLATED_WORLD_ID_CONTENT_END).ExtractList();
-
-    std::vector<double> result;
-    for (const auto& value : options.GetList()) {
-      result.push_back(value.GetDouble());
-    }
-    return result;
-  }
-
   static std::vector<double> GetRewardsPopupTipOptions(
       content::WebContents* popup) {
     rewards_browsertest_utils::WaitForElementToAppear(
@@ -326,40 +201,63 @@ class BraveRewardsBrowserTest
                        std::string* response,
                        std::map<std::string, std::string>* headers) {
     request_made_ = true;
-    std::vector<std::string> tmp = base::SplitString(url,
-                                                     "/",
-                                                     base::TRIM_WHITESPACE,
-                                                     base::SPLIT_WANT_ALL);
-    const std::string persona_url =
-        braveledger_request_util::BuildUrl(REGISTER_PERSONA, PREFIX_V2);
+    std::vector<std::string> tmp = base::SplitString(
+        url,
+        "/",
+        base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_ALL);
+
+    const std::string persona_url = braveledger_request_util::BuildUrl(
+        REGISTER_PERSONA,
+        PREFIX_V2);
+
     if (url.find(persona_url) == 0 && tmp.size() == 6) {
       *response = brave_test_resp::registrarVK_;
-    } else if (URLMatches(url, REGISTER_PERSONA, PREFIX_V2,
-                          ServerTypes::LEDGER) &&
-               tmp.size() == 7) {
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, REGISTER_PERSONA, PREFIX_V2,
+        ServerTypes::LEDGER) && tmp.size() == 7) {
       *response = brave_test_resp::verification_;
-    } else if (URLMatches(url, WALLET_PROPERTIES, PREFIX_V2,
-                          ServerTypes::BALANCE)) {
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, WALLET_PROPERTIES, PREFIX_V2,
+        ServerTypes::BALANCE)) {
       if (show_defaults_in_properties_) {
         *response = brave_test_resp::wallet_properties_defaults_;
-      } else {
-        *response = brave_test_resp::wallet_properties_;
+        return;
       }
-    } else if (URLMatches(url, "/promotions?", PREFIX_V1,
-                          ServerTypes::kPromotion)) {
+
+      *response = brave_test_resp::wallet_properties_;
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, "/promotions?", PREFIX_V1,
+        ServerTypes::kPromotion)) {
       *response = brave_test_resp::promotions_;
-    } else if (URLMatches(url, "/promotions/", PREFIX_V1,
-                          ServerTypes::kPromotion)) {
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, "/promotions/", PREFIX_V1,
+        ServerTypes::kPromotion)) {
       if (url.find("claims") != std::string::npos) {
         *response = brave_test_resp::promotion_tokens_;
-      } else {
-        *response = brave_test_resp::promotion_claim_;
+        return;
       }
-    } else if (URLMatches(url, "/captchas", PREFIX_V1,
-                          ServerTypes::kPromotion)) {
+
+      *response = brave_test_resp::promotion_claim_;
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, "/captchas", PREFIX_V1,
+        ServerTypes::kPromotion)) {
       *response = brave_test_resp::captcha_;
-    } else if (URLMatches(url, GET_PUBLISHERS_LIST, "",
-                          ServerTypes::PUBLISHER_DISTRO)) {
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, GET_PUBLISHERS_LIST, "",
+        ServerTypes::PUBLISHER_DISTRO)) {
       if (alter_publisher_list_) {
         *response =
             "["
@@ -368,25 +266,32 @@ class BraveRewardsBrowserTest
             "[\"laurenwags.github.io\",\"wallet_connected\",false,\"address2\","
               "{\"donationAmounts\": [5,10,20]}]"
             "]";
-      } else {
-        *response =
-            "["
-            "[\"bumpsmack.com\",\"publisher_verified\",false,\"address1\",{}],"
-            "[\"duckduckgo.com\",\"wallet_connected\",false,\"address2\",{}],"
-            "[\"3zsistemi.si\",\"wallet_connected\",false,\"address3\",{}],"
-            "[\"site1.com\",\"wallet_connected\",false,\"address4\",{}],"
-            "[\"site2.com\",\"wallet_connected\",false,\"address5\",{}],"
-            "[\"site3.com\",\"wallet_connected\",false,\"address6\",{}],"
-            "[\"laurenwags.github.io\",\"wallet_connected\",false,\"address2\","
-              "{\"donationAmounts\": [5,10,20]}]"
-            "]";
+        return;
       }
-    } else if (base::StartsWith(
+
+      *response =
+          "["
+          "[\"bumpsmack.com\",\"publisher_verified\",false,\"address1\",{}],"
+          "[\"duckduckgo.com\",\"wallet_connected\",false,\"address2\",{}],"
+          "[\"3zsistemi.si\",\"wallet_connected\",false,\"address3\",{}],"
+          "[\"site1.com\",\"wallet_connected\",false,\"address4\",{}],"
+          "[\"site2.com\",\"wallet_connected\",false,\"address5\",{}],"
+          "[\"site3.com\",\"wallet_connected\",false,\"address6\",{}],"
+          "[\"laurenwags.github.io\",\"wallet_connected\",false,\"address2\","
+            "{\"donationAmounts\": [5,10,20]}]"
+          "]";
+      return;
+    }
+
+    if (base::StartsWith(
         url,
         braveledger_uphold::GetAPIUrl("/oauth2/token"),
         base::CompareCase::INSENSITIVE_ASCII)) {
       *response = brave_test_resp::uphold_auth_resp_;
-    } else if (base::StartsWith(
+      return;
+    }
+
+    if (base::StartsWith(
         url,
         braveledger_uphold::GetAPIUrl("/v0/me/cards"),
         base::CompareCase::INSENSITIVE_ASCII)) {
@@ -396,43 +301,67 @@ class BraveRewardsBrowserTest
           base::CompareCase::INSENSITIVE_ASCII)) {
         *response = brave_test_resp::uphold_transactions_resp_;
         *response_status_code = net::HTTP_ACCEPTED;
-      } else if (base::EndsWith(
+        return;
+      }
+
+      if (base::EndsWith(
           url,
           "commit",
           base::CompareCase::INSENSITIVE_ASCII)) {
         *response = brave_test_resp::uphold_commit_resp_;
-      } else {
-        *response = GetUpholdCard();
+        return;
       }
-    } else if (base::StartsWith(
+
+      *response = GetUpholdCard();
+      return;
+    }
+
+    if (base::StartsWith(
         url,
         braveledger_uphold::GetAPIUrl("/v0/me"),
         base::CompareCase::INSENSITIVE_ASCII)) {
-      *response = GetUpholdUser();
-    } else if (URLMatches(url, WALLET_PROPERTIES, PREFIX_V2,
-                          ServerTypes::LEDGER)) {
+      *response = GetUpholdUser(verified_wallet_);
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, WALLET_PROPERTIES, PREFIX_V2,
+        ServerTypes::LEDGER)) {
       GURL gurl(url);
       if (gurl.has_query()) {
         *response = brave_test_resp::reconcile_;
-      } else {
-        *response = brave_test_resp::current_reconcile_;
+        return;
       }
 
-    } else if (URLMatches(url, RECONCILE_CONTRIBUTION, PREFIX_V2,
-                          ServerTypes::LEDGER)) {
+      *response = brave_test_resp::current_reconcile_;
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, RECONCILE_CONTRIBUTION,
+        PREFIX_V2, ServerTypes::LEDGER)) {
       *response = brave_test_resp::contribution_;
-    } else if (URLMatches(url, REGISTER_VIEWING, PREFIX_V2,
-                          ServerTypes::LEDGER)) {
-      if (url.find(REGISTER_VIEWING "/") != std::string::npos)
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, REGISTER_VIEWING, PREFIX_V2,
+        ServerTypes::LEDGER)) {
+      if (url.find(REGISTER_VIEWING "/") != std::string::npos) {
         *response = brave_test_resp::register_credential_;
-      else
-        *response = brave_test_resp::register_;
-    } else if (URLMatches(url, SURVEYOR_BATCH_VOTING, PREFIX_V2,
-                          ServerTypes::LEDGER)) {
-      if (url.find(SURVEYOR_BATCH_VOTING "/") != std::string::npos)
+        return;
+      }
+
+      *response = brave_test_resp::register_;
+      return;
+    }
+
+    if (rewards_browsertest_utils::URLMatches(url, SURVEYOR_BATCH_VOTING,
+        PREFIX_V2, ServerTypes::LEDGER)) {
+      if (url.find(SURVEYOR_BATCH_VOTING "/") != std::string::npos) {
         *response = brave_test_resp::surveyor_voting_credential_;
-      else
-        *response = brave_test_resp::surveyor_voting_;
+        return;
+      }
+
+      *response = brave_test_resp::surveyor_voting_;
+      return;
     }
   }
 
