@@ -10,7 +10,6 @@
 #include <vector>
 #include <utility>
 
-#include "base/values.h"
 #include "brave/browser/brave_rewards/checkout_dialog_message_handler.h"
 #include "brave/common/webui_url_constants.h"
 #include "chrome/browser/ui/browser.h"
