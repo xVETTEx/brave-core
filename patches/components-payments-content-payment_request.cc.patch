@@ -1,0 +1,20 @@
+diff --git a/components/payments/content/payment_request.cc b/components/payments/content/payment_request.cc
+index d8eab2d1733891d9b3aa8546e52fd07179d21aa2..c78bd1b62da2a141641f5d72a4d90e4409a0f625 100644
+--- a/components/payments/content/payment_request.cc
++++ b/components/payments/content/payment_request.cc
+@@ -212,6 +212,7 @@ void PaymentRequest::Init(
+       base::Contains(spec_->url_payment_method_identifiers(), google_pay_url) ||
+           base::Contains(spec_->url_payment_method_identifiers(),
+                          android_pay_url),
++      BRAVE_PAYMENT_REQUEST_SET_OTHER_METHOD_TYPE
+       /*requested_method_other=*/non_google_it !=
+           spec_->url_payment_method_identifiers().end());
+ 
+@@ -665,7 +666,6 @@ void PaymentRequest::OnPaymentResponseAvailable(
+       break;
+     }
+     case PaymentApp::Type::NATIVE_MOBILE_APP:
+-      NOTREACHED();
+       break;
+   }
+   journey_logger_.SetEventOccurred(selected_event);
