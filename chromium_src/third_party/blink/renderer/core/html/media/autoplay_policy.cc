@@ -5,9 +5,13 @@
 
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 
-#define BRAVE_AUTOPLAY_POLICY_IS_GESTURE_NEEDED_FOR_PLAYBACK \
-  if (IsAutoplayAllowedPerSettings())                        \
+#define BRAVE_AUTOPLAY_POLICY_REQUEST_AUTOPLAY_BY_ATTRIBUTE                    \
+  if (!IsAutoplayAllowedPerSettings())                                         \
     return false;
+
+#define BRAVE_AUTOPLAY_POLICY_REQUEST_PLAY                    \
+  if (!IsAutoplayAllowedPerSettings())                        \
+    return DOMExceptionCode::kNotAllowedError;
 
 #define BRAVE_AUTOPLAY_POLICY_IS_AUTOPLAY_ALLOWED_PER_SETTINGS         \
   bool AutoplayPolicy::IsAutoplayAllowedPerSettings() const {          \
