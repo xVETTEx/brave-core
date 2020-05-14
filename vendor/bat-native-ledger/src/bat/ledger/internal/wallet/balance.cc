@@ -94,11 +94,10 @@ void Balance::OnFetch(
 
   balance->wallets.insert(std::make_pair(ledger::kWalletAnonymous, total_anon));
 
-
-  GetUnBlindedTokens(std::move(balance), callback);
+  GetUnblindedTokens(std::move(balance), callback);
 }
 
-void Balance::GetUnBlindedTokens(
+void Balance::GetUnblindedTokens(
     ledger::BalancePtr balance,
     ledger::FetchBalanceCallback callback) {
   if (!balance) {
@@ -106,7 +105,7 @@ void Balance::GetUnBlindedTokens(
     callback(ledger::Result::LEDGER_ERROR, std::move(balance));
     return;
   }
-  auto tokens_callback = std::bind(&Balance::OnGetUnBlindedTokens,
+  auto tokens_callback = std::bind(&Balance::OnGetUnblindedTokens,
       this,
       *balance,
       callback,
@@ -116,7 +115,7 @@ void Balance::GetUnBlindedTokens(
       tokens_callback);
 }
 
-void Balance::OnGetUnBlindedTokens(
+void Balance::OnGetUnblindedTokens(
     ledger::Balance info,
     ledger::FetchBalanceCallback callback,
     ledger::UnblindedTokenList list) {
