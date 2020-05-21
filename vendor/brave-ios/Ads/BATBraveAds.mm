@@ -36,6 +36,10 @@ static const NSInteger kDefaultNumberOfAdsPerHour = 2;
 static NSString * const kAdsEnabledPrefKey = @"BATAdsEnabled";
 static NSString * const kNumberOfAdsPerDayKey = @"BATNumberOfAdsPerDay";
 static NSString * const kNumberOfAdsPerHourKey = @"BATNumberOfAdsPerHour";
+static NSString * const kshouldAllowAdConversionTrackingPrefKeu = @"BATShouldAllowAdConversionTrackingPrefKeu";
+static NSString * const kCountrySubdivisionPrefKey = @"BATCountrySubdivisionPrefKey";
+static NSString * const kDidOverrideAdsSubdivisionPrefKey = @"BATDidOverrideAdsSubdivisionPrefKey";
+static NSString * const kIsSubdivisionAdTargetingRegionPrefKey = @"BATIsSubdivisionAdTargetingRegion";
 
 @interface BATAdNotification ()
 - (instancetype)initWithNotificationInfo:(const ads::AdNotificationInfo&)info;
@@ -178,11 +182,6 @@ BATClassAdsBridge(BOOL, isDebug, setDebug, _is_debug)
   } else {
     [self shutdown];
   }
-}
-
-- (BOOL)shouldAllowAdConversionTracking
-{
-  return true;
 }
 
 - (NSInteger)numberOfAllowableAdsPerDay
@@ -403,6 +402,39 @@ BATClassAdsBridge(BOOL, isDebug, setDebug, _is_debug)
   if (![self isAdsServiceRunning]) { return; }
   [self.ledger setCatalogIssuers:[NSString stringWithUTF8String:info->ToJson().c_str()]];
 }
+
+- (BOOL)shouldAllowAdConversionTracking
+{
+  return [(NSNumber *)self.prefs[kshouldAllowAdConversionTracking] boolValue]
+}
+
+- (BOOL)didOverrideAdsSubdivision
+{
+  return [(NSNumber *)self.prefs[kDidOverrideAdsSubdivisionPrefKey] boolValue]
+}
+
+- (const std::string)getCountrySubdivision
+{
+  return [(NSNumber *)self.prefs[kCountrySubdivisionPrefKey] stringValue]
+}
+
+- (void)setCountrySubdivision:(const std::string &)countrySubDivision
+{
+  self.prefs[kCountrySubdivisionPrefKey] = @(countrySubDivision);
+  [self savePrefs];
+}
+
+- (BOOL)isSubdivisionAdTargetingRegion
+{
+  return [(NSNumber *)self.prefs[kIsSubdivisionAdTargetingRegionPrefKey] boolValue]
+}
+
+- (void)setSubdivisionAdTargetingRegion:(bool)isRegion
+{
+  self.prefs[kIsSubdivisionAdTargetingRegionPrefKey] = @(isRegion);
+  [self savePrefs];
+}
+
 
 #pragma mark - Configuration
 
