@@ -9,7 +9,7 @@
 #define ContentSettingsTypeToGroupName \
   ContentSettingsTypeToGroupName_ChromiumImpl
 
-#include "../../../../../../chrome/browser/ui/webui/site_settings_helper.cc"
+#include "../../../../../../../chrome/browser/ui/webui/settings/site_settings_helper.cc"
 #undef ContentSettingsTypeToGroupName
 #undef ContentSettingsTypeFromGroupName
 #undef HasRegisteredGroupName
