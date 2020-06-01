@@ -32,7 +32,7 @@ export const generateContributionMonthly = (list: number[], rates: Record<string
 
   return list.map((item: number) => {
     return {
-      tokens: item.toFixed(1),
+      tokens: item.toFixed(3),
       converted: convertBalance(item, rates)
     }
   })

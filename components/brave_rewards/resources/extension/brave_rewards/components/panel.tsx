@@ -228,7 +228,7 @@ export class Panel extends React.Component<Props, State> {
         const item = balanceReport[key]
 
         if (item !== 0) {
-          const tokens = item.toFixed(1)
+          const tokens = item.toFixed(3)
           props[key] = {
             tokens,
             converted: utils.convertBalance(item, rates)
@@ -535,7 +535,7 @@ export class Panel extends React.Component<Props, State> {
 
     return amounts.map((value: number) => {
       return {
-        tokens: value.toFixed(1),
+        tokens: value.toFixed(3),
         converted: utils.convertBalance(value, rates),
         selected: false
       }
@@ -543,7 +543,7 @@ export class Panel extends React.Component<Props, State> {
   }
 
   getContribution = (publisher?: RewardsExtension.Publisher) => {
-    let defaultContribution = '0.0'
+    let defaultContribution = '0.000'
     const { recurringTips } = this.props.rewardsPanelData
 
     if (!recurringTips ||
@@ -553,7 +553,7 @@ export class Panel extends React.Component<Props, State> {
 
     recurringTips.map((tip: any) => {
       if (tip.publisherKey === publisher.publisher_key) {
-        defaultContribution = tip.amount.toFixed(1)
+        defaultContribution = tip.amount.toFixed(3)
       }
     })
 
@@ -694,7 +694,7 @@ export class Panel extends React.Component<Props, State> {
     const notificationClick = this.getNotificationClickEvent(notificationType, notificationId)
     const defaultContribution = this.getContribution(publisher)
     const checkmark = publisher && utils.isPublisherConnectedOrVerified(publisher.status)
-    const tipAmounts = defaultContribution !== '0.0'
+    const tipAmounts = defaultContribution !== '0.000'
       ? this.generateAmounts(publisher)
       : undefined
     const { onlyAnonWallet } = this.props
@@ -706,7 +706,7 @@ export class Panel extends React.Component<Props, State> {
     }
 
     const pendingTotal = parseFloat(
-      (pendingContributionTotal || 0).toFixed(1))
+      (pendingContributionTotal || 0).toFixed(3))
 
     let faviconUrl
     if (publisher && publisher.url) {
@@ -730,7 +730,7 @@ export class Panel extends React.Component<Props, State> {
         compact={true}
         contentPadding={false}
         gradientTop={this.gradientColor}
-        balance={total.toFixed(1)}
+        balance={total.toFixed(3)}
         converted={utils.formatConverted(converted)}
         actions={this.getActions()}
         showCopy={false}
