@@ -5,11 +5,11 @@
 
 #include "third_party/blink/renderer/modules/webaudio/analyser_node.h"
 
-#include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 
-#define BRAVE_ANALYSERHANDLER_CONSTRUCTOR                                    \
-  analyser_.fudge_factor_ = brave::BraveSessionCache::From(                  \
-                                *Document::From(node.GetExecutionContext())) \
+#define BRAVE_ANALYSERHANDLER_CONSTRUCTOR                                                      \
+  analyser_.fudge_factor_ = brave::BraveSessionCache::From(                                    \
+                                *(To<LocalDOMWindow>(node.GetExecutionContext())->document())) \
                                 .GetFudgeFactor();
 
 #include "../../../../../../third_party/blink/renderer/modules/webaudio/analyser_node.cc"
