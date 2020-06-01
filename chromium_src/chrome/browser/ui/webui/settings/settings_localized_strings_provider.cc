@@ -7,6 +7,7 @@
 #include "chrome/browser/ui/webui/webui_util.h"
 #include "base/stl_util.h"
 #include "brave/browser/ui/webui/settings/brave_privacy_handler.h"
+#include "brave/browser/version_info.h"
 
 namespace settings {
 void BraveAddLocalizedStrings(content::WebUIDataSource*, Profile*);
@@ -22,8 +23,10 @@ void BraveAddLocalizedStrings(content::WebUIDataSource*, Profile*);
 #define IDS_SETTINGS_EDIT_PERSON IDS_SETTINGS_BRAVE_EDIT_PROFILE
 #undef IDS_SETTINGS_PROFILE_NAME_AND_PICTURE
 #define IDS_SETTINGS_PROFILE_NAME_AND_PICTURE IDS_SETTINGS_BRAVE_EDIT_PROFILE
+#define GetVersionNumber GetBraveVersionNumberForDisplay
 
-#include "../../../../../../chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc"  // NOLINT
+#include "../../../../../../chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc"
+#undef GetVersionNumber
 
 #include "brave/browser/ui/webui/brave_settings_ui.h"
 namespace settings {
