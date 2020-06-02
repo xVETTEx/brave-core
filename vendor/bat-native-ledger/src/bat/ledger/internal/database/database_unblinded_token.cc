@@ -670,6 +670,22 @@ void DatabaseUnblindedToken::MarkRecordListAsReserved(
 
   transaction->commands.push_back(std::move(command));
 
+  query =
+      "UPDATE contribution_info SET step=?, retry_count=0 "
+      "WHERE contribution_id = ?";
+
+  command = ledger::DBCommand::New();
+  command->type = ledger::DBCommand::Type::RUN;
+  command->command = query;
+
+  BindInt(
+      command.get(),
+      0,
+      static_cast<int>(ledger::ContributionStep::STEP_RESERVE));
+  BindString(command.get(), 1, redeem_id);
+
+  transaction->commands.push_back(std::move(command));
+
   query = base::StringPrintf(
       "SELECT token_id FROM %s "
       "WHERE reserved_at != 0 AND token_id IN (%s)",
@@ -704,6 +720,7 @@ void DatabaseUnblindedToken::OnMarkRecordListAsReserved(
   }
 
   if (response->result->get_records().size() != expected_row_count) {
+    BLOG(0, "Records size doesn't match");
     callback(ledger::Result::LEDGER_ERROR);
     return;
   }
