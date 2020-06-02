@@ -23,7 +23,6 @@ class BraveRewardsBalance {
      * src/brave/components/brave_rewards/browser/balance.h
      */
     public static final String JSON_TOTAL = "total";
-    public static final String JSON_RATES = "rates";
     public static final String JSON_WALLETS = "wallets";
 
     double mTotal;
