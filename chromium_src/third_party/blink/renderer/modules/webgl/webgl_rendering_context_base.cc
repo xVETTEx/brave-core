@@ -41,7 +41,7 @@
   if (canvas() && !AllowFingerprinting(canvas()->GetDocument().GetFrame())) \
     return String();
 
-#include "../../../../../../third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc.cc"
+#include "../../../../../../third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc"
 #undef BRAVE_WEBGL_RENDERING_CONTEXT_BASE_STRING
 #undef BRAVE_WEBGL_RENDERING_CONTEXT_BASE_GET_EXTENSION
 #undef BRAVE_WEBGL_RENDERING_CONTEXT_BASE_SCRIPT_VALUE
