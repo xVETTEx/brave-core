@@ -33,6 +33,12 @@ Balance::~Balance() {
 }
 
 void Balance::Fetch(ledger::FetchBalanceCallback callback) {
+  // we don't have user funds in anon card anymore
+  // so we can skip balance server ping
+  if (!braveledger_state::GetFetchOldBalanceEnabled(ledger_)) {
+
+    return;
+  }
   std::string payment_id = ledger_->GetPaymentId();
 
   std::string path = "/wallet/" + payment_id + "/balance";
